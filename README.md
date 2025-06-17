@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # CodeAssistant 项目
 
 CodeAssistant 是一个本地AI编程助手，基于Ollama模型，提供代码生成、语义搜索和知识库功能。
@@ -85,3 +86,6 @@ python test_knowledge_base.py
 ## 贡献
 
 欢迎提交Issue和Pull Request！ 
+=======
+# AIGO
+>>>>>>> 58721c47e3b7fa0cc17616f9700a733d890a2151
