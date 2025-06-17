@@ -1,0 +1,13 @@
+{
+  "id": "gpt-3.5-turbo",
+  "name": "GPT-3.5 Turbo",
+  "description": "OpenAI's GPT-3.5 Turbo model for chat completion",
+  "type": "openai",
+  "model": "gpt-3.5-turbo",
+  "api_key": "",
+  "max_tokens": 4096,
+  "temperature": 0.7,
+  "top_p": 1.0,
+  "frequency_penalty": 0.0,
+  "presence_penalty": 0.0
+} 

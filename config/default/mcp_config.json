@@ -1,0 +1,106 @@
+{
+    "mcp_server": {
+        "enabled": true,
+        "api_host": "localhost",
+        "api_port": 8765,
+        "auth_enabled": true,
+        "auth_token": "",
+        "plugins_dir": "plugins"
+    },
+    "filesystem_analyzer": {
+        "ignored_dirs": [
+            ".git", ".svn", "node_modules", "__pycache__", 
+            ".venv", "venv", "env", "dist", "build", ".idea", 
+            ".vscode", ".vs", "bin", "obj"
+        ],
+        "ignored_extensions": [
+            ".pyc", ".pyo", ".pyd", ".so", ".dll", ".exe", 
+            ".bin", ".obj", ".o", ".a", ".lib", ".suo", 
+            ".pdb", ".class", ".cache"
+        ],
+        "max_file_size_mb": 10,
+        "content_cache_enabled": true,
+        "content_cache_size": 100
+    },
+    "network_proxy": {
+        "cache_enabled": true,
+        "cache_ttl_seconds": 3600,
+        "max_cache_size": 100,
+        "timeout_seconds": 10,
+        "max_retries": 3,
+        "user_agent": "Mozilla/5.0 MCP-Agent/1.0",
+        "cache_dir": "data/network_cache",
+        "allowed_domains": [
+            "github.com", "raw.githubusercontent.com", "gitlab.com",
+            "stackoverflow.com", "docs.python.org", "developer.mozilla.org",
+            "api.github.com", "api.openai.com", "api.anthropic.com"
+        ],
+        "allowed_schemes": ["https"],
+        "blocked_content_types": [
+            "application/octet-stream", "application/x-msdownload", 
+            "application/x-executable", "application/x-dosexec"
+        ],
+        "max_response_size_mb": 10
+    },
+    "context_manager": {
+        "storage_path": "data/context",
+        "max_context_size": 10000,
+        "max_contexts": 100,
+        "persistence_enabled": true,
+        "compression_enabled": true
+    },
+    "path_utils": {
+        "safe_paths": [
+            "data", "src", "plugins", "config", "logs"
+        ]
+    },
+    "models": {
+        "inference": {
+            "provider": "ollama",
+            "name": "deepseek-r1:8b",
+            "api_base": "http://localhost:11434",
+            "api_key": "",
+            "max_context_length": 4000,
+            "temperature": 0.7,
+            "max_tokens": 2048
+        },
+        "embedding": {
+            "provider": "ollama",
+            "name": "bge-m3",
+            "api_base": "http://localhost:11434",
+            "api_key": "",
+            "dimensions": 384
+        }
+    },
+    "model_management": {
+        "auto_select": true,
+        "auto_unload": true,
+        "unload_timeout_minutes": 10,
+        "prefer_gpu": true,
+        "max_concurrent_models": 1
+    },
+    "plugins": {
+        "enabled": true,
+        "auto_load": true,
+        "allowed_plugins": []
+    },
+    "ide_integration": {
+        "vscode": {
+            "enabled": true,
+            "extension_id": "mcp-vscode-extension",
+            "api_url": "http://localhost:8765/api"
+        },
+        "cursor": {
+            "enabled": true,
+            "extension_id": "mcp-cursor-extension",
+            "api_url": "http://localhost:8765/api"
+        }
+    },
+    "logging": {
+        "level": "info",
+        "file": "logs/mcp.log",
+        "max_size_mb": 10,
+        "backup_count": 5,
+        "console_enabled": true
+    }
+} 
