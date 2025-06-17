@@ -65,6 +65,29 @@ class ModelService(ABC):
         """
         pass
 
+    def is_available(self):
+        """
+        检查模型服务是否可用
+        
+        Returns:
+            bool: 模型服务是否可用
+        """
+        try:
+            # 尝试简单请求以检查服务状态
+            if self.provider == "ollama":
+                import requests
+                response = requests.get(f"{self.api_base}/api/tags", timeout=2)
+                return response.status_code == 200
+            elif self.provider == "openai":
+                # 不实际调用API，只检查是否有token
+                return bool(self.api_key)
+            else:
+                # 对于其他提供商添加类似的检查
+                return True
+        except Exception as e:
+            logger.warning(f"模型服务检查失败: {str(e)}")
+            return False
+
 
 class OllamaService(ModelService):
     """

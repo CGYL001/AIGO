@@ -10,13 +10,16 @@ import json
 import shutil
 import logging
 import subprocess
+import time
+import functools
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Dict, List, Optional, Tuple, Any, Callable
 from datetime import datetime
 
 from src.utils import config
 from src.services import auth_service
 from src.services.repo_permission_service import get_instance as get_repo_permission_service
+from src.utils.async_utils import retry
 
 # 导入平台适配器
 from .platform.github_adapter import GitHubAdapter
@@ -27,85 +30,116 @@ logger = logging.getLogger(__name__)
 
 class RepoManager:
     """
-    代码仓库管理器
+    仓库管理器
     
-    负责代码仓库的克隆、拉取、推送等操作
-    管理与不同代码托管平台的集成
+    管理代码仓库的克隆、拉取、推送等操作
     """
     
-    def __init__(self):
-        """初始化仓库管理器"""
-        # 加载配置
-        self._repo_config = config.get("repository_integration", {})
+    def __init__(self, auth_service=None, repo_permission_service=None):
+        """
+        初始化仓库管理器
         
-        # 本地仓库存储路径
-        local_path = self._repo_config.get("local_repo_path", "data/repositories")
-        self._local_repo_path = Path(local_path)
-        os.makedirs(self._local_repo_path, exist_ok=True)
+        Args:
+            auth_service: 认证服务，如果为None则使用默认服务
+            repo_permission_service: 仓库权限服务，如果为None则使用默认服务
+        """
+        self._auth_service = auth_service or auth_service
+        self._repo_permission_service = repo_permission_service or get_repo_permission_service()
         
-        # 默认分支
-        self._default_branch = self._repo_config.get("default_branch", "main")
+        # 设置仓库本地存储路径
+        self._local_repo_path = Path(config.get("repository_integration.local_repo_path", "data/repositories"))
+        self._settings_path = Path(config.get("repository_integration.settings_path", "data/repositories/settings"))
+        self._audit_log_path = Path(config.get("repository_integration.audit_log_path", "data/repositories/audit"))
         
-        # 平台适配器
+        # 确保目录存在
+        self._local_repo_path.mkdir(parents=True, exist_ok=True)
+        self._settings_path.mkdir(parents=True, exist_ok=True)
+        self._audit_log_path.mkdir(parents=True, exist_ok=True)
+        
+        # 初始化平台适配器
         self._adapters = {}
-        self._initialize_adapters()
+        self._init_adapters()
         
-        # 权限服务
-        self._auth_service = auth_service.get_instance()
-        self._permission_service = get_repo_permission_service()
-        
-        # 当前会话ID
+        # 当前会话ID，用于权限管理
         self._current_session_id = None
         
-    def _initialize_adapters(self):
+        logger.info(f"仓库管理器初始化完成，支持的平台: {', '.join(self._adapters.keys())}")
+    
+    def _init_adapters(self):
         """初始化平台适配器"""
         # 获取平台配置
-        platforms_config = self._repo_config.get("platforms", {})
+        platforms_config = config.get("repository_integration.platforms", {})
         
-        # 初始化启用的平台适配器
-        if platforms_config.get("github", {}).get("enabled", False):
-            self._adapters["github"] = GitHubAdapter(platforms_config["github"])
-            
-        if platforms_config.get("gitlab", {}).get("enabled", False):
-            self._adapters["gitlab"] = GitLabAdapter(platforms_config["gitlab"])
-            
-        if platforms_config.get("gitee", {}).get("enabled", False):
-            self._adapters["gitee"] = GiteeAdapter(platforms_config["gitee"])
+        # 初始化GitHub适配器
+        if platforms_config.get("github", {}).get("enabled", True):
+            self._adapters["github"] = GitHubAdapter()
         
-        logger.info(f"已初始化 {len(self._adapters)} 个代码托管平台适配器")
+        # 初始化GitLab适配器
+        if platforms_config.get("gitlab", {}).get("enabled", True):
+            self._adapters["gitlab"] = GitLabAdapter()
         
-    def set_session(self, session_id: str):
-        """设置当前会话ID"""
+        # 初始化Gitee适配器
+        if platforms_config.get("gitee", {}).get("enabled", True):
+            self._adapters["gitee"] = GiteeAdapter()
+    
+    def set_session_id(self, session_id: str):
+        """
+        设置当前会话ID
+        
+        Args:
+            session_id: 会话ID
+        """
         self._current_session_id = session_id
-        
+    
     def get_platforms(self) -> List[str]:
-        """获取支持的平台列表"""
+        """
+        获取支持的平台列表
+        
+        Returns:
+            List[str]: 平台列表
+        """
         return list(self._adapters.keys())
-        
+    
     def is_platform_supported(self, platform: str) -> bool:
-        """检查平台是否被支持"""
-        return platform.lower() in self._adapters
+        """
+        检查平台是否支持
         
-    def get_platform_info(self, platform: str) -> Dict:
-        """获取平台信息"""
+        Args:
+            platform: 平台名称
+            
+        Returns:
+            bool: 是否支持
+        """
+        return platform.lower() in self._adapters
+    
+    def get_platform_info(self, platform: str) -> Dict[str, Any]:
+        """
+        获取平台信息
+        
+        Args:
+            platform: 平台名称
+            
+        Returns:
+            Dict[str, Any]: 平台信息
+        """
         if not self.is_platform_supported(platform):
-            return {}
+            return {"name": platform, "api_url": "", "authenticated": False}
             
         adapter = self._adapters[platform.lower()]
         return {
-            'name': adapter.get_platform_name(),
-            'api_url': adapter.get_api_url(),
-            'auth_method': adapter.get_auth_method(),
-            'authenticated': adapter.is_authenticated()
+            "name": adapter.get_platform_name(),
+            "api_url": adapter.get_api_url(),
+            "authenticated": adapter.is_authenticated()
         }
-        
-    async def authenticate(self, platform: str, credentials: Dict) -> Tuple[bool, str]:
+    
+    @retry(max_attempts=3, delay=2)
+    async def authenticate(self, platform: str, credentials: Dict[str, str]) -> Tuple[bool, str]:
         """
         平台认证
         
         Args:
             platform: 平台名称
-            credentials: 认证信息
+            credentials: 认证凭据
             
         Returns:
             Tuple[bool, str]: (是否成功, 提示信息)
@@ -114,198 +148,20 @@ class RepoManager:
             return False, f"不支持的平台: {platform}"
             
         adapter = self._adapters[platform.lower()]
-        success, message = await adapter.authenticate(credentials)
-        
-        return success, message
-        
-    async def list_repositories(self, platform: str, username: str = None) -> List[Dict]:
+        return await adapter.authenticate(credentials)
+    
+    @retry(max_attempts=3, delay=2)
+    async def list_repositories(self, platform: str, username: Optional[str] = None) -> Tuple[bool, Any]:
         """
-        获取仓库列表
+        列出仓库
         
         Args:
             platform: 平台名称
-            username: 用户名，不指定则获取已认证用户的仓库
+            username: 用户名，如果为None则列出当前用户的仓库
             
         Returns:
-            List[Dict]: 仓库列表
+            Tuple[bool, Any]: (是否成功, 仓库列表或错误信息)
         """
-        if not self.is_platform_supported(platform):
-            logger.error(f"不支持的平台: {platform}")
-            return []
-            
-        adapter = self._adapters[platform.lower()]
-        
-        if not adapter.is_authenticated():
-            logger.error(f"未认证平台: {platform}")
-            return []
-            
-        repos = await adapter.list_repositories(username)
-        return repos
-        
-    async def get_repository(self, platform: str, repo_name: str) -> Dict:
-        """
-        获取仓库详情
-        
-        Args:
-            platform: 平台名称
-            repo_name: 仓库名称 (格式: 用户名/仓库名)
-            
-        Returns:
-            Dict: 仓库信息
-        """
-        if not self.is_platform_supported(platform):
-            logger.error(f"不支持的平台: {platform}")
-            return {}
-            
-        adapter = self._adapters[platform.lower()]
-        
-        if not adapter.is_authenticated():
-            logger.error(f"未认证平台: {platform}")
-            return {}
-            
-        repo_info = await adapter.get_repository(repo_name)
-        return repo_info
-        
-    def get_local_repositories(self) -> List[Dict]:
-        """
-        获取本地克隆的仓库列表
-        
-        Returns:
-            List[Dict]: 本地仓库列表
-        """
-        local_repos = []
-        
-        # 搜索本地仓库目录
-        for item in self._local_repo_path.iterdir():
-            if not item.is_dir():
-                continue
-                
-            # 检查是否为git仓库
-            git_dir = item / ".git"
-            if not git_dir.is_dir():
-                continue
-                
-            # 读取仓库信息
-            repo_info = self._get_local_repo_info(item)
-            if repo_info:
-                # 添加仓库ID
-                repo_info['repo_id'] = self._permission_service.generate_repo_id(str(item))
-                local_repos.append(repo_info)
-                
-        return local_repos
-        
-    def _get_local_repo_info(self, repo_path: Path) -> Dict:
-        """获取本地仓库信息"""
-        try:
-            # 获取远程仓库URL
-            result = subprocess.run(
-                ["git", "config", "--get", "remote.origin.url"],
-                cwd=str(repo_path),
-                capture_output=True,
-                text=True,
-                check=False
-            )
-            
-            remote_url = result.stdout.strip()
-            
-            # 获取当前分支
-            result = subprocess.run(
-                ["git", "branch", "--show-current"],
-                cwd=str(repo_path),
-                capture_output=True,
-                text=True,
-                check=False
-            )
-            
-            current_branch = result.stdout.strip() or self._default_branch
-            
-            # 获取最后提交信息
-            result = subprocess.run(
-                ["git", "log", "-1", "--format=%H|%an|%at|%s"],
-                cwd=str(repo_path),
-                capture_output=True,
-                text=True,
-                check=False
-            )
-            
-            last_commit = {}
-            if result.returncode == 0 and result.stdout.strip():
-                parts = result.stdout.strip().split("|", 3)
-                if len(parts) >= 4:
-                    last_commit = {
-                        "hash": parts[0],
-                        "author": parts[1],
-                        "date": datetime.fromtimestamp(int(parts[2])).isoformat(),
-                        "message": parts[3]
-                    }
-            
-            # 确定平台类型
-            platform = "unknown"
-            if "github.com" in remote_url:
-                platform = "github"
-            elif "gitlab.com" in remote_url:
-                platform = "gitlab"
-            elif "gitee.com" in remote_url:
-                platform = "gitee"
-            
-            # 解析仓库名称
-            repo_name = repo_path.name
-            
-            return {
-                "name": repo_name,
-                "path": str(repo_path),
-                "platform": platform,
-                "remote_url": remote_url,
-                "current_branch": current_branch,
-                "last_commit": last_commit
-            }
-        except Exception as e:
-            logger.error(f"获取本地仓库信息失败: {str(e)}")
-            return {}
-            
-    async def clone_repository(self, platform: str, repo_name: str, branch: str = None) -> Tuple[bool, str]:
-        """
-        克隆仓库
-        
-        Args:
-            platform: 平台名称
-            repo_name: 仓库名称 (格式: 用户名/仓库名)
-            branch: 分支名，默认为主分支
-            
-        Returns:
-            Tuple[bool, str]: (是否成功, 提示信息)
-        """
-        if not self._current_session_id:
-            return False, "未设置会话ID"
-            
-        # 获取仓库信息
-        repo_info = await adapter.get_repository(repo_name)
-        if not repo_info:
-            return False, f"仓库不存在: {repo_name}"
-            
-        # 获取克隆URL
-        clone_url = repo_info.get("clone_url", "")
-        if not clone_url:
-            return False, "无法获取克隆URL"
-            
-        # 确定目标目录
-        repo_name_simple = repo_name.split("/")[-1]
-        target_dir = self._local_repo_path / repo_name_simple
-        
-        # 检查目录是否已存在
-        if target_dir.exists():
-            return False, f"目标目录已存在: {target_dir}"
-        
-        # 权限检查（使用新的权限服务）
-        has_permission, message = self._permission_service.check_operation_permission(
-            self._current_session_id, 
-            str(target_dir), 
-            "clone"
-        )
-        
-        if not has_permission:
-            return False, message
-            
         if not self.is_platform_supported(platform):
             return False, f"不支持的平台: {platform}"
             
@@ -313,322 +169,408 @@ class RepoManager:
         
         if not adapter.is_authenticated():
             return False, f"未认证平台: {platform}"
-            
-        # 执行克隆
+        
         try:
-            cmd = ["git", "clone"]
-            
-            # 指定分支
-            if branch:
-                cmd.extend(["-b", branch])
-                
-            cmd.extend([clone_url, str(target_dir)])
-            
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                check=False
-            )
-            
-            if result.returncode != 0:
-                return False, f"克隆失败: {result.stderr}"
-            
-            # 设置用户为管理员角色
-            repo_id = self._permission_service.generate_repo_id(str(target_dir))
-            self._permission_service.assign_role(repo_id, self._current_session_id, "admin")
-                
-            return True, f"仓库已克隆到 {target_dir}"
+            repos = await adapter.list_repositories(username)
+            return True, repos
         except Exception as e:
-            logger.error(f"克隆仓库失败: {str(e)}")
-            # 清理失败的克隆
-            if target_dir.exists():
-                shutil.rmtree(target_dir, ignore_errors=True)
-            return False, f"克隆操作失败: {str(e)}"
+            logger.error(f"列出仓库失败: {str(e)}")
+            return False, f"列出仓库失败: {str(e)}"
+    
+    @retry(max_attempts=3, delay=2)
+    async def clone_repository(self, platform: str, repo_name: str, branch: str = None) -> Tuple[bool, str]:
+        """
+        克隆仓库
+        
+        Args:
+            platform: 平台名称
+            repo_name: 仓库名称 (格式: 用户名/仓库名)
+            branch: 分支名，不指定则使用默认分支
             
-    async def pull_repository(self, repo_path: str, branch: str = None) -> Tuple[bool, str]:
+        Returns:
+            Tuple[bool, str]: (是否成功, 提示信息或仓库路径)
+        """
+        if not self.is_platform_supported(platform):
+            return False, f"不支持的平台: {platform}"
+            
+        adapter = self._adapters[platform.lower()]
+        
+        if not adapter.is_authenticated():
+            return False, f"未认证平台: {platform}"
+        
+        # 获取仓库信息
+        repo_info = await adapter.get_repository(repo_name)
+        if not repo_info:
+            return False, f"获取仓库 {repo_name} 信息失败"
+        
+        # 检查权限
+        if not self._check_permission("clone_repository"):
+            return False, "权限不足，无法克隆仓库"
+        
+        # 生成本地路径
+        local_path = self._local_repo_path / platform / repo_name.replace("/", "_")
+        
+        # 如果目录已存在，先删除
+        if local_path.exists():
+            shutil.rmtree(local_path)
+        
+        # 创建父目录
+        local_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # 获取克隆URL
+        clone_url = repo_info.get("clone_url")
+        if not clone_url:
+            return False, f"无法获取仓库 {repo_name} 的克隆URL"
+        
+        # 构建克隆命令
+        cmd = ["git", "clone", clone_url, str(local_path)]
+        if branch:
+            cmd.extend(["--branch", branch])
+        
+        try:
+            # 执行克隆命令
+            process = subprocess.Popen(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
+            )
+            stdout, stderr = process.communicate()
+            
+            if process.returncode != 0:
+                logger.error(f"克隆仓库失败: {stderr}")
+                return False, f"克隆仓库失败: {stderr}"
+            
+            # 记录审计日志
+            self._log_audit_event("clone_repository", {
+                "platform": platform,
+                "repo_name": repo_name,
+                "branch": branch,
+                "local_path": str(local_path)
+            })
+            
+            return True, str(local_path)
+        except Exception as e:
+            logger.error(f"克隆仓库异常: {str(e)}")
+            return False, f"克隆仓库异常: {str(e)}"
+    
+    @retry(max_attempts=3, delay=2)
+    async def pull_repository(self, repo_path: str) -> Tuple[bool, str]:
         """
         拉取仓库更新
         
         Args:
-            repo_path: 本地仓库路径
-            branch: 分支名，默认为当前分支
+            repo_path: 仓库路径
             
         Returns:
             Tuple[bool, str]: (是否成功, 提示信息)
         """
-        if not self._current_session_id:
-            return False, "未设置会话ID"
-            
-        repo_path = Path(repo_path)
-        if not repo_path.is_dir() or not (repo_path / ".git").is_dir():
-            return False, f"无效的Git仓库: {repo_path}"
-            
-        # 权限检查（使用新的权限服务）
-        has_permission, message = self._permission_service.check_operation_permission(
-            self._current_session_id, 
-            str(repo_path), 
-            "pull"
-        )
+        # 检查路径是否存在
+        if not os.path.exists(repo_path):
+            return False, f"仓库路径不存在: {repo_path}"
         
-        if not has_permission:
-            return False, message
-            
+        # 检查是否为Git仓库
+        if not os.path.exists(os.path.join(repo_path, ".git")):
+            return False, f"不是有效的Git仓库: {repo_path}"
+        
+        # 检查权限
+        if not self._check_permission("pull_repository"):
+            return False, "权限不足，无法拉取仓库更新"
+        
         try:
-            cmd = ["git", "pull"]
-            
-            # 指定分支
-            if branch:
-                cmd.extend(["origin", branch])
-                
-            result = subprocess.run(
-                cmd,
-                cwd=str(repo_path),
-                capture_output=True,
-                text=True,
-                check=False
+            # 执行拉取命令
+            process = subprocess.Popen(
+                ["git", "pull"],
+                cwd=repo_path,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
             )
+            stdout, stderr = process.communicate()
             
-            if result.returncode != 0:
-                return False, f"拉取失败: {result.stderr}"
-                
-            return True, f"仓库已更新: {result.stdout}"
+            if process.returncode != 0:
+                logger.error(f"拉取仓库更新失败: {stderr}")
+                return False, f"拉取仓库更新失败: {stderr}"
+            
+            # 记录审计日志
+            self._log_audit_event("pull_repository", {
+                "repo_path": repo_path,
+                "result": stdout
+            })
+            
+            return True, stdout
         except Exception as e:
-            logger.error(f"拉取仓库更新失败: {str(e)}")
-            return False, f"拉取更新失败: {str(e)}"
-            
-    async def push_repository(self, repo_path: str, message: str, branch: str = None) -> Tuple[bool, str]:
+            logger.error(f"拉取仓库更新异常: {str(e)}")
+            return False, f"拉取仓库更新异常: {str(e)}"
+    
+    @retry(max_attempts=3, delay=2)
+    async def push_repository(self, repo_path: str, commit_message: str = None) -> Tuple[bool, str]:
         """
-        提交并推送更改
+        推送仓库更改
         
         Args:
-            repo_path: 本地仓库路径
-            message: 提交信息
-            branch: 分支名，默认为当前分支
+            repo_path: 仓库路径
+            commit_message: 提交信息，如果为None则使用默认信息
             
         Returns:
             Tuple[bool, str]: (是否成功, 提示信息)
         """
-        if not self._current_session_id:
-            return False, "未设置会话ID"
-            
-        repo_path = Path(repo_path)
-        if not repo_path.is_dir() or not (repo_path / ".git").is_dir():
-            return False, f"无效的Git仓库: {repo_path}"
-
-        # 权限检查（使用新的权限服务）
-        has_permission, permission_message = self._permission_service.check_operation_permission(
-            self._current_session_id, 
-            str(repo_path), 
-            "push"
-        )
+        # 检查路径是否存在
+        if not os.path.exists(repo_path):
+            return False, f"仓库路径不存在: {repo_path}"
         
-        if not has_permission:
-            return False, permission_message
+        # 检查是否为Git仓库
+        if not os.path.exists(os.path.join(repo_path, ".git")):
+            return False, f"不是有效的Git仓库: {repo_path}"
         
-        # 获取当前分支，用于分支保护规则检查
-        current_branch = ""
-        try:
-            result = subprocess.run(
-                ["git", "branch", "--show-current"],
-                cwd=str(repo_path),
-                capture_output=True,
-                text=True,
-                check=False
-            )
-            if result.returncode == 0:
-                current_branch = result.stdout.strip()
-        except Exception:
-            pass
+        # 检查权限
+        if not self._check_permission("push_repository"):
+            return False, "权限不足，无法推送仓库更改"
         
-        # 如果指定了分支，使用指定的分支
-        use_branch = branch or current_branch
+        # 设置默认提交信息
+        if not commit_message:
+            commit_message = f"更新于 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         
-        # 检查分支保护规则
-        repo_id = self._permission_service.generate_repo_id(str(repo_path))
-        is_protected, rule_message = self._permission_service.check_protection_rule(
-            repo_id, 
-            "protected_branches", 
-            {"branch": use_branch}
-        )
-        
-        if not is_protected:
-            # 检查用户是否为管理员，如果是管理员则可以绕过保护规则
-            role = self._permission_service.get_user_role(repo_id, self._current_session_id)
-            if role != "admin":
-                return False, rule_message
-            
         try:
             # 添加所有更改
-            result = subprocess.run(
+            add_process = subprocess.Popen(
                 ["git", "add", "."],
-                cwd=str(repo_path),
-                capture_output=True,
-                text=True,
-                check=False
+                cwd=repo_path,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
             )
+            add_stdout, add_stderr = add_process.communicate()
             
-            if result.returncode != 0:
-                return False, f"添加文件失败: {result.stderr}"
-                
+            if add_process.returncode != 0:
+                logger.error(f"添加更改失败: {add_stderr}")
+                return False, f"添加更改失败: {add_stderr}"
+            
             # 提交更改
-            result = subprocess.run(
-                ["git", "commit", "-m", message],
-                cwd=str(repo_path),
-                capture_output=True,
-                text=True,
-                check=False
+            commit_process = subprocess.Popen(
+                ["git", "commit", "-m", commit_message],
+                cwd=repo_path,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
             )
+            commit_stdout, commit_stderr = commit_process.communicate()
             
-            if result.returncode != 0 and "nothing to commit" not in result.stderr:
-                return False, f"提交更改失败: {result.stderr}"
-                
+            # 如果没有更改，则直接返回
+            if "nothing to commit" in commit_stderr:
+                return True, "没有更改需要提交"
+            
+            if commit_process.returncode != 0 and "nothing to commit" not in commit_stderr:
+                logger.error(f"提交更改失败: {commit_stderr}")
+                return False, f"提交更改失败: {commit_stderr}"
+            
             # 推送更改
-            cmd = ["git", "push"]
-            
-            # 指定分支
-            if branch:
-                cmd.extend(["origin", branch])
-                
-            result = subprocess.run(
-                cmd,
-                cwd=str(repo_path),
-                capture_output=True,
-                text=True,
-                check=False
+            push_process = subprocess.Popen(
+                ["git", "push"],
+                cwd=repo_path,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True
             )
+            push_stdout, push_stderr = push_process.communicate()
             
-            if result.returncode != 0:
-                return False, f"推送失败: {result.stderr}"
-                
-            return True, "更改已成功推送"
+            if push_process.returncode != 0:
+                logger.error(f"推送更改失败: {push_stderr}")
+                return False, f"推送更改失败: {push_stderr}"
+            
+            # 记录审计日志
+            self._log_audit_event("push_repository", {
+                "repo_path": repo_path,
+                "commit_message": commit_message
+            })
+            
+            return True, "推送更改成功"
         except Exception as e:
-            logger.error(f"推送仓库更改失败: {str(e)}")
-            return False, f"推送更改失败: {str(e)}"
-            
-    def delete_local_repository(self, repo_path: str) -> Tuple[bool, str]:
+            logger.error(f"推送仓库更改异常: {str(e)}")
+            return False, f"推送仓库更改异常: {str(e)}"
+    
+    async def delete_repository(self, repo_path: str) -> Tuple[bool, str]:
         """
         删除本地仓库
         
         Args:
-            repo_path: 本地仓库路径
+            repo_path: 仓库路径
             
         Returns:
             Tuple[bool, str]: (是否成功, 提示信息)
         """
-        if not self._current_session_id:
-            return False, "未设置会话ID"
-
-        repo_path = Path(repo_path)
-        if not repo_path.is_dir() or not (repo_path / ".git").is_dir():
-            return False, f"无效的Git仓库: {repo_path}"
-            
-        # 确保路径在本地仓库目录内
-        if not str(repo_path).startswith(str(self._local_repo_path)):
-            return False, "无法删除非本地仓库目录中的仓库"
-
-        # 权限检查（使用新的权限服务）
-        has_permission, message = self._permission_service.check_operation_permission(
-            self._current_session_id, 
-            str(repo_path), 
-            "delete"
-        )
+        # 检查路径是否存在
+        if not os.path.exists(repo_path):
+            return False, f"仓库路径不存在: {repo_path}"
         
-        if not has_permission:
-            return False, message
-            
+        # 检查是否为Git仓库
+        if not os.path.exists(os.path.join(repo_path, ".git")):
+            return False, f"不是有效的Git仓库: {repo_path}"
+        
+        # 检查权限
+        if not self._check_permission("delete_repository"):
+            return False, "权限不足，无法删除仓库"
+        
         try:
+            # 删除仓库目录
             shutil.rmtree(repo_path)
-            return True, f"已删除本地仓库: {repo_path.name}"
+            
+            # 记录审计日志
+            self._log_audit_event("delete_repository", {
+                "repo_path": repo_path
+            })
+            
+            return True, "删除仓库成功"
         except Exception as e:
-            logger.error(f"删除本地仓库失败: {str(e)}")
-            return False, f"删除仓库失败: {str(e)}"
+            logger.error(f"删除仓库异常: {str(e)}")
+            return False, f"删除仓库异常: {str(e)}"
     
-    def get_repo_permissions(self, repo_path: str) -> Dict:
+    async def list_local_repositories(self) -> List[Dict[str, Any]]:
         """
-        获取仓库权限信息
+        列出本地仓库
+        
+        Returns:
+            List[Dict[str, Any]]: 本地仓库列表
+        """
+        result = []
+        
+        # 遍历平台目录
+        for platform_dir in self._local_repo_path.iterdir():
+            if platform_dir.is_dir():
+                platform = platform_dir.name
+                
+                # 遍历仓库目录
+                for repo_dir in platform_dir.iterdir():
+                    if repo_dir.is_dir() and (repo_dir / ".git").exists():
+                        # 获取仓库信息
+                        repo_info = {
+                            "platform": platform,
+                            "name": repo_dir.name,
+                            "path": str(repo_dir),
+                            "last_modified": datetime.fromtimestamp(repo_dir.stat().st_mtime).strftime("%Y-%m-%d %H:%M:%S")
+                        }
+                        
+                        # 获取远程URL
+                        try:
+                            process = subprocess.Popen(
+                                ["git", "config", "--get", "remote.origin.url"],
+                                cwd=str(repo_dir),
+                                stdout=subprocess.PIPE,
+                                stderr=subprocess.PIPE,
+                                text=True
+                            )
+                            stdout, stderr = process.communicate()
+                            
+                            if process.returncode == 0:
+                                repo_info["remote_url"] = stdout.strip()
+                        except Exception:
+                            pass
+                        
+                        result.append(repo_info)
+        
+        return result
+    
+    def _check_permission(self, operation: str) -> bool:
+        """
+        检查权限
         
         Args:
-            repo_path: 本地仓库路径
+            operation: 操作名称
             
         Returns:
-            Dict: 仓库权限信息
+            bool: 是否有权限
         """
-        if not repo_path:
-            return {}
+        if not self._current_session_id:
+            logger.warning("未设置会话ID，无法检查权限")
+            return False
             
-        repo_id = self._permission_service.generate_repo_id(repo_path)
+        return self._repo_permission_service.check_permission(self._current_session_id, operation)
+    
+    def _log_audit_event(self, event_type: str, event_data: Dict[str, Any]):
+        """
+        记录审计事件
         
-        # 获取仓库设置
-        settings = self._permission_service.get_repo_settings(repo_id)
-        
-        # 获取保护规则
-        protection_rules = self._permission_service.get_protection_rules(repo_id)
-        
-        # 获取审计日志
-        audit_logs = self._permission_service.get_audit_logs(repo_id, limit=20)
-        
-        return {
-            "repo_id": repo_id,
-            "role_assignments": settings.get("role_assignments", {}),
-            "protection_rules": protection_rules,
-            "audit_logs": audit_logs
+        Args:
+            event_type: 事件类型
+            event_data: 事件数据
+        """
+        # 创建事件记录
+        event = {
+            "timestamp": datetime.now().isoformat(),
+            "type": event_type,
+            "session_id": self._current_session_id,
+            "data": event_data
         }
+        
+        # 生成日志文件名
+        log_file = self._audit_log_path / f"{datetime.now().strftime('%Y%m%d')}.json"
+        
+        try:
+            # 读取现有日志
+            events = []
+            if log_file.exists():
+                with open(log_file, "r", encoding="utf-8") as f:
+                    events = json.load(f)
+            
+            # 添加新事件
+            events.append(event)
+            
+            # 写入日志文件
+            with open(log_file, "w", encoding="utf-8") as f:
+                json.dump(events, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.error(f"记录审计事件失败: {str(e)}")
     
-    def update_repo_protection(self, repo_path: str, rules: Dict) -> Tuple[bool, str]:
+    def get_audit_logs(self, start_date: datetime = None, end_date: datetime = None, 
+                      event_type: str = None) -> List[Dict[str, Any]]:
         """
-        更新仓库保护规则
+        获取审计日志
         
         Args:
-            repo_path: 本地仓库路径
-            rules: 保护规则
+            start_date: 开始日期，如果为None则不限制
+            end_date: 结束日期，如果为None则使用当前日期
+            event_type: 事件类型，如果为None则不限制
             
         Returns:
-            Tuple[bool, str]: (是否成功, 提示信息)
+            List[Dict[str, Any]]: 审计日志列表
         """
-        if not self._current_session_id:
-            return False, "未设置会话ID"
+        # 设置默认结束日期
+        if end_date is None:
+            end_date = datetime.now()
             
-        repo_id = self._permission_service.generate_repo_id(repo_path)
-        
-        # 检查是否有管理员权限
-        if self._permission_service.get_user_role(repo_id, self._current_session_id) != "admin":
-            return False, "只有管理员可以修改仓库保护规则"
-        
-        # 更新保护规则
-        success = True
-        for rule_name, rule_value in rules.items():
-            if not self._permission_service.set_protection_rule(repo_id, rule_name, rule_value):
-                success = False
-        
-        return success, "保护规则已更新" if success else "部分保护规则更新失败"
-    
-    def update_user_role(self, repo_path: str, user_id: str, role: str) -> Tuple[bool, str]:
-        """
-        更新用户角色
-        
-        Args:
-            repo_path: 本地仓库路径
-            user_id: 用户ID
-            role: 角色名称
+        # 如果未指定开始日期，则使用结束日期前30天
+        if start_date is None:
+            start_date = end_date - datetime.timedelta(days=30)
             
-        Returns:
-            Tuple[bool, str]: (是否成功, 提示信息)
-        """
-        if not self._current_session_id:
-            return False, "未设置会话ID"
+        # 获取日期范围内的所有日志文件
+        log_files = []
+        current_date = start_date.date()
+        while current_date <= end_date.date():
+            log_file = self._audit_log_path / f"{current_date.strftime('%Y%m%d')}.json"
+            if log_file.exists():
+                log_files.append(log_file)
+            current_date += datetime.timedelta(days=1)
             
-        repo_id = self._permission_service.generate_repo_id(repo_path)
-        
-        # 检查是否有管理员权限
-        if self._permission_service.get_user_role(repo_id, self._current_session_id) != "admin":
-            return False, "只有管理员可以修改用户角色"
-        
-        # 更新用户角色
-        if self._permission_service.assign_role(repo_id, user_id, role):
-            return True, f"用户角色已更新为 {role}"
-        else:
-            return False, "用户角色更新失败"
+        # 读取并过滤日志
+        results = []
+        for log_file in log_files:
+            try:
+                with open(log_file, "r", encoding="utf-8") as f:
+                    events = json.load(f)
+                    
+                    for event in events:
+                        # 解析时间戳
+                        timestamp = datetime.fromisoformat(event["timestamp"])
+                        
+                        # 检查时间范围
+                        if start_date <= timestamp <= end_date:
+                            # 检查事件类型
+                            if event_type is None or event["type"] == event_type:
+                                results.append(event)
+            except Exception as e:
+                logger.error(f"读取审计日志失败: {str(e)}")
+                
+        return results
 
 # 单例实例
 _instance = None

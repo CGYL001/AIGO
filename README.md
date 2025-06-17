@@ -1,15 +1,15 @@
-<<<<<<< HEAD
-# CodeAssistant 项目
+# AIgo
 
-CodeAssistant 是一个本地AI编程助手，基于Ollama模型，提供代码生成、语义搜索和知识库功能。
+AIgo 是一个本地AI编程助手，基于Ollama模型，提供代码生成、语义搜索和知识库功能。
 
 ## 功能特点
 
-- 使用Ollama本地模型，保护隐私
-- 支持代码生成和补全
+- 使用Ollama本地模型，保护隐私及代码安全
+- 支持代码生成、补全和优化
 - 提供语义搜索和知识库功能
-- 支持多种编程语言
+- 支持多种编程语言（Python、JavaScript、Java等）
 - 可自定义模型和参数
+- 代码分析和质量评估
 
 ## 安装说明
 
@@ -40,7 +40,7 @@ ollama pull bge-m3
 ollama serve
 ```
 
-2. 启动CodeAssistant
+2. 启动AIgo
 ```bash
 python start_assistant.py
 ```
@@ -79,13 +79,16 @@ python test_llama2.py
 python test_knowledge_base.py
 ```
 
+## 系统要求
+
+- Python 3.8+
+- 内存: 至少8GB (推荐16GB以上)
+- 支持Windows、macOS和Linux
+
 ## 许可证
 
 [MIT License](LICENSE)
 
 ## 贡献
 
-欢迎提交Issue和Pull Request！ 
-=======
-# AIGO
->>>>>>> 58721c47e3b7fa0cc17616f9700a733d890a2151
+欢迎提交Issue和Pull Request！

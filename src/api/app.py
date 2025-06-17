@@ -816,33 +816,69 @@ def confirm_operation_api():
     })
 
 def start_web_app(host: str = None, port: int = None, debug: bool = None, system_monitor = None):
-    """
-    启动Web应用
-    
-    Args:
-        host: 主机名，默认从配置中获取
-        port: 端口号，默认从配置中获取
-        debug: 是否启用调试模式，默认从配置中获取
-        system_monitor: 系统资源监控实例
-    """
+    """启动Web应用"""
     global resource_monitor
     
-    # 设置资源监控实例
+    # 初始化必要的目录结构
+    from src.utils.init_utils import ensure_directories
+    ensure_directories()
+    
+    # 设置host和port
+    if host is None:
+        host = config.get("app.host", "localhost")
+    if port is None:
+        port = config.get("app.port", 8080)
+    if debug is None:
+        debug = config.get("app.debug", False)
+        
+    # 设置资源监控
     resource_monitor = system_monitor
     
-    # 配置Flask会话密钥
-    app.secret_key = os.environ.get('SECRET_KEY', os.urandom(24).hex())
+    # 设置会话密钥
+    app.secret_key = os.urandom(24)
     
-    # 设置会话过期时间为24小时
-    app.config['PERMANENT_SESSION_LIFETIME'] = 86400
+    # 确保会话目录存在
+    os.makedirs('instance', exist_ok=True)
     
-    # 使用默认配置
-    host = host or config.get("app.host", "localhost")
-    port = port or config.get("app.port", 8080)
-    debug = debug if debug is not None else config.get("app.debug", True)
+    # 检查模型服务状态
+    model_available = _check_model_service()
+    if not model_available:
+        logger.warning("模型服务不可用，某些功能将被禁用")
     
-    logger.info(f"启动Web应用，地址: http://{host}:{port}，调试模式: {debug}")
+    # 注入会话管理中间件
+    @app.before_request
+    def before_request():
+        # 确保每个会话都有一个唯一的身份验证会话ID
+        if 'auth_session_id' not in session:
+            session['auth_session_id'] = auth_service.get_instance().create_session()
+        
+        # 设置仓库管理器会话ID
+        repo_manager.set_session(session.get('auth_session_id'))
+    
+    # 注册错误处理器
+    @app.errorhandler(404)
+    def page_not_found(e):
+        return render_template('error.html', 
+                             error_code=404, 
+                             error_message="页面未找到"), 404
+                             
+    @app.errorhandler(500)
+    def server_error(e):
+        return render_template('error.html', 
+                             error_code=500, 
+                             error_message="服务器内部错误"), 500
+    
+    # 启动服务器
+    logger.info(f"启动Web服务器 http://{host}:{port}")
     app.run(host=host, port=port, debug=debug)
+
+def _check_model_service():
+    """检查模型服务状态"""
+    try:
+        return model_service.is_available()
+    except Exception as e:
+        logger.error(f"检查模型服务失败: {str(e)}")
+        return False
 
 if __name__ == '__main__':
     start_web_app() 

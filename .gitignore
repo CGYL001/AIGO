@@ -16,36 +16,79 @@ lib64/
 parts/
 sdist/
 var/
+wheels/
 *.egg-info/
 .installed.cfg
 *.egg
 
-# Virtual Environment
+# Environments
+.env
+.venv
+env/
 venv/
 ENV/
-env/
+env.bak/
+venv.bak/
 
-# IDE
+# IDE Settings
 .idea/
 .vscode/
 *.swp
 *.swo
+.DS_Store
+*.bak
 
-# Logs
+# Project Specific
+data/
 logs/
+cache/
+config/user/
+test_kb*/
+temp_*/
+.coverage
+htmlcov/
 *.log
 
-# Cache
-cache/
-.cache/
-__pycache__/
+# Sphinx documentation
+docs/_build/
+docs/_autosummary/
+docs/_static/
 
-# Data
-data/
-test_kb/
-test_kb_demo/
-temp_test_kb/
+# Docker
+docker-compose.override.yml
 
-# OS
-.DS_Store
-Thumbs.db 
+# Virtual Environment
+python*/
+
+# Models
+models/
+
+# Distribution / packaging
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Large files
+*.bin
+*.model
+*.vec
+*.gz
+*.zip
+*.tar
+*.onnx
+*.pt
+*.h5 

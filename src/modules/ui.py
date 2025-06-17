@@ -3,6 +3,34 @@ import sys
 from pathlib import Path
 from typing import Dict, Any, Optional
 
+class UI:
+    """UI模块类"""
+    
+    def __init__(self):
+        """初始化UI模块"""
+        self.port = 8080
+        
+    def launch(self, port: int = None, 
+              kb=None, 
+              code_completion=None, 
+              error_checker=None, 
+              code_analyzer=None) -> None:
+        """启动UI界面"""
+        port = port or self.port
+        launch_ui(port, kb, code_completion, error_checker, code_analyzer)
+        
+    def render_template(self, template_name: str, **context) -> str:
+        """渲染HTML模板"""
+        return render_template(template_name, **context)
+        
+    def get_static_url(self, filename: str) -> str:
+        """获取静态资源URL"""
+        return get_static_url(filename)
+        
+    def create_api_response(self, data: Any, success: bool = True, message: str = "") -> Dict[str, Any]:
+        """创建API响应格式"""
+        return create_api_response(data, success, message)
+
 def launch_ui(port: int = 8080, 
              kb=None, 
              code_completion=None, 

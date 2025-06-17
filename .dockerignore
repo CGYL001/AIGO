@@ -1,0 +1,64 @@
+# Git
+.git
+.gitignore
+.github
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Project specific
+data/
+logs/
+test_kb*/
+temp_*/
+*.bak
+
+# Docker
+Dockerfile.dev
+docker-compose.override.yml
+
+# Documentation
+docs/_build/
+
+# Large files
+*.bin
+*.model
+*.vec
+*.gz
+*.zip
+*.tar
+*.onnx
+*.pt
+*.h5 

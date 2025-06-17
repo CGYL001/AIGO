@@ -198,7 +198,11 @@
     },
     "storage": {
         "type": "sqlite",
-        "path": "data/user_data/codeassistant.db"
+        "path": "data/user_data/codeassistant.db",
+        "backup_enabled": true,
+        "backup_interval_hours": 24,
+        "backup_path": "data/backups",
+        "max_backups": 7
     },
     "performance": {
         "hardware_profile": "medium",
@@ -231,14 +235,6 @@
         "password_min_length": 8,
         "password_require_special": true,
         "api_key_default_expiry_days": 90
-    },
-    "storage": {
-        "type": "sqlite",
-        "path": "data/user_data/codeassistant.db",
-        "backup_enabled": true,
-        "backup_interval_hours": 24,
-        "backup_path": "data/backups",
-        "max_backups": 7
     },
     "ai_integration": {
         "provider": "openai",

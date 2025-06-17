@@ -2,75 +2,81 @@
 # -*- coding: utf-8 -*-
 
 """
-知识库测试脚本
+知识库测试 - 快速测试知识库功能
 """
 
-import os
 import sys
+import os
 from pathlib import Path
 
-# 添加项目根目录到Python路径
+# 确保可以正确导入模块
 ROOT_DIR = Path(__file__).parent
 sys.path.append(str(ROOT_DIR))
 
+# 使用正确的导入路径
 from src.modules.knowledge_base import KnowledgeBase
-from src.services import ModelServiceFactory
 
-def main():
-    print("=== 知识库测试 ===")
+def test_knowledge_base():
+    """测试知识库功能"""
+    print("="*50)
+    print("知识库功能测试")
+    print("="*50)
     
-    # 创建知识库目录
-    kb_dir = "test_kb_demo"
-    os.makedirs(kb_dir, exist_ok=True)
+    # 创建临时测试目录
+    test_dir = Path("test_kb_demo")
+    os.makedirs(test_dir, exist_ok=True)
     
     # 初始化知识库
-    print("初始化知识库...")
     kb = KnowledgeBase()
-    kb.init_vector_store(kb_dir, dimension=1024)
+    print("初始化知识库...")
     
-    # 添加测试文本
-    print("\n添加测试文本...")
-    texts = [
-        "Python是一种易于学习、功能强大的编程语言。它具有高效的高级数据结构，并且能够用简单有效的方式进行面向对象编程。",
-        "向量数据库是一种专门用于存储和检索向量嵌入的数据库系统。它们通常用于构建语义搜索、推荐系统和其他机器学习应用。",
-        "知识库系统是一种存储、组织和检索知识的系统。它们可以用于辅助决策、问答系统和信息管理。",
-        "大语言模型是基于Transformer架构的深度学习模型，通过大规模预训练和微调，能够生成连贯、相关的文本内容。",
-        "向量嵌入是将文本、图像等数据转换为高维向量的过程，使得语义相似的内容在向量空间中距离更近。"
+    # 初始化向量存储
+    success = kb.init_vector_store(str(test_dir))
+    if success:
+        print("✓ 向量存储初始化成功")
+    else:
+        print("× 向量存储初始化失败")
+        return
+    
+    # 添加测试数据
+    test_texts = [
+        "Python是一种面向对象的高级编程语言",
+        "机器学习是人工智能的一个子领域",
+        "向量数据库用于高效存储和检索向量数据",
+        "大语言模型基于Transformer架构",
+        "知识库可以增强大语言模型的能力",
     ]
     
-    metadata = [
-        {"source": "测试", "title": "Python简介", "type": "language"},
-        {"source": "测试", "title": "向量数据库简介", "type": "database"},
-        {"source": "测试", "title": "知识库系统简介", "type": "system"},
-        {"source": "测试", "title": "大语言模型简介", "type": "ai"},
-        {"source": "测试", "title": "向量嵌入简介", "type": "ai"}
-    ]
-    
-    for i, (text, meta) in enumerate(zip(texts, metadata)):
-        print(f"添加文本 {i+1}: {meta['title']}")
-        kb.add_text(text, meta)
+    print("\n添加测试数据...")
+    for i, text in enumerate(test_texts):
+        metadata = {"source": "test", "id": f"doc{i+1}"}
+        success = kb.add_text(text, metadata)
+        if success:
+            print(f"✓ 添加成功: {text[:20]}...")
+        else:
+            print(f"× 添加失败: {text[:20]}...")
     
     # 测试搜索
-    print("\n测试搜索...")
-    queries = [
-        "Python编程语言的特点",
-        "向量数据库的用途",
-        "什么是知识库",
-        "大语言模型的工作原理",
-        "向量嵌入与语义搜索"
-    ]
+    print("\n测试搜索功能...")
+    queries = ["Python编程", "机器学习", "向量搜索", "大语言模型"]
     
     for query in queries:
-        print(f"\n查询: {query}")
+        print(f"\n搜索: '{query}'")
         results = kb.search(query, top_k=2)
         
-        print(f"找到 {len(results)} 条结果:")
-        for i, result in enumerate(results):
-            print(f"结果 {i+1} (分数: {result['score']:.4f}):")
-            print(f"  标题: {result.get('metadata', {}).get('title', '未知')}")
-            print(f"  内容: {result['text']}")
+        if results:
+            print(f"找到 {len(results)} 条结果:")
+            for i, result in enumerate(results):
+                print(f"  {i+1}. {result['text']}")
+                if 'metadata' in result:
+                    print(f"     来源: {result['metadata'].get('source', '未知')}")
+                if 'score' in result:
+                    print(f"     相似度: {result['score']:.4f}")
+        else:
+            print("未找到相关结果")
     
-    print("\n知识库测试完成")
+    print("\n知识库功能测试完成")
+    return True
 
 if __name__ == "__main__":
-    main() 
+    test_knowledge_base() 

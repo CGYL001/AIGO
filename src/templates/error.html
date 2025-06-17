@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ app_name }} - 发生错误</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}" type="image/x-icon">
+    <style>
+        .error-container {
+            text-align: center;
+            padding: 50px 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .error-code {
+            font-size: 72px;
+            font-weight: bold;
+            color: #e74c3c;
+            margin-bottom: 20px;
+        }
+        
+        .error-message {
+            font-size: 24px;
+            margin-bottom: 30px;
+        }
+        
+        .error-details {
+            background-color: #f8f8f8;
+            border-radius: 5px;
+            padding: 20px;
+            margin-top: 20px;
+            text-align: left;
+        }
+        
+        .error-actions {
+            margin-top: 30px;
+        }
+        
+        .error-actions .btn {
+            margin: 0 10px;
+        }
+        
+        .error-suggestion {
+            margin-top: 20px;
+            font-style: italic;
+            color: #555;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>{{ app_name }} <span class="version">v{{ version }}</span></h1>
+        </div>
+    </header>
+    
+    <nav class="main-nav">
+        <div class="container">
+            <ul>
+                <li><a href="/">首页</a></li>
+                <li><a href="/models">模型管理</a></li>
+                <li><a href="/repository">代码仓库</a></li>
+                <li><a href="#about">关于</a></li>
+            </ul>
+        </div>
+    </nav>
+    
+    <main>
+        <div class="error-container">
+            <div class="error-code">{{ error_code }}</div>
+            <div class="error-message">{{ error_message }}</div>
+            
+            {% if error_details %}
+            <div class="error-details">
+                <h3>错误详情</h3>
+                <p>{{ error_details }}</p>
+            </div>
+            {% endif %}
+            
+            <div class="error-suggestion">
+                {% if error_code == 404 %}
+                    找不到请求的页面，请检查URL是否正确。
+                {% elif error_code == 500 %}
+                    服务器内部错误，请稍后再试或联系管理员。
+                {% elif error_code == 401 %}
+                    未授权访问，请先登录。
+                {% elif error_code == 403 %}
+                    您没有权限访问此资源。
+                {% else %}
+                    出现了未知错误，请尝试刷新页面或返回首页。
+                {% endif %}
+                
+                {% if model_service_status is defined and model_service_status == False %}
+                    <p><strong>注意:</strong> 模型服务当前不可用，某些功能可能受限。</p>
+                {% endif %}
+            </div>
+            
+            <div class="error-actions">
+                <a href="javascript:history.back()" class="btn">返回上一页</a>
+                <a href="/" class="btn btn-primary">返回首页</a>
+                {% if error_code >= 500 %}
+                <a href="/models" class="btn">检查模型状态</a>
+                {% endif %}
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <div class="container">
+            <p>&copy; {{ current_year }} {{ app_name }}. 保留所有权利。</p>
+        </div>
+    </footer>
+</body>
+</html> 

@@ -1,0 +1,31 @@
+# Sphinx build output
+_build/
+build/
+_autosummary/
+_generated/
+
+# Sphinx auto-generated files
+*.doctree
+*.pickle
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# Sphinx extensions
+_extensions/
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*~
+
+# OS specific files
+.DS_Store
+Thumbs.db 
