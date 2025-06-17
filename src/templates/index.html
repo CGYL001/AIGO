@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ app_name }} - 本地AI编程助手</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}" type="image/x-icon">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>{{ app_name }} <span class="version">v{{ version }}</span></h1>
+            <p>基于DeepSeek和CherryStudio的本地AI编程助手</p>
+        </div>
+    </header>
+    
+    <nav class="main-nav">
+        <div class="container">
+            <ul>
+                <li><a href="/" class="active">首页</a></li>
+                <li><a href="/models">模型管理</a></li>
+                <li><a href="#about">关于</a></li>
+            </ul>
+        </div>
+    </nav>
+    
+    <main class="container">
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="code-completion">代码补全</button>
+            <button class="tab-btn" data-tab="error-check">错误检查</button>
+            <button class="tab-btn" data-tab="code-analysis">代码分析</button>
+            <button class="tab-btn" data-tab="knowledge-base">知识库</button>
+        </div>
+        
+        <div class="tab-content active" id="code-completion">
+            <h2>智能代码补全</h2>
+            <div class="editor-container">
+                <div class="editor-options">
+                    <select id="language-selector">
+                        <option value="python">Python</option>
+                        <option value="javascript">JavaScript</option>
+                        <option value="java">Java</option>
+                        <option value="cpp">C++</option>
+                        <option value="csharp">C#</option>
+                    </select>
+                    <button id="complete-btn">补全代码</button>
+                </div>
+                <div class="editor">
+                    <textarea id="code-editor" placeholder="在此输入代码..."></textarea>
+                </div>
+                <div class="completion-result">
+                    <h3>补全结果</h3>
+                    <pre id="completion-output">代码补全结果将显示在这里...</pre>
+                </div>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="error-check">
+            <h2>代码错误检查</h2>
+            <div class="editor-container">
+                <div class="editor-options">
+                    <select id="check-language-selector">
+                        <option value="python">Python</option>
+                        <option value="javascript">JavaScript</option>
+                        <option value="java">Java</option>
+                        <option value="cpp">C++</option>
+                    </select>
+                    <button id="check-btn">检查代码</button>
+                </div>
+                <div class="editor">
+                    <textarea id="check-editor" placeholder="在此输入要检查的代码..."></textarea>
+                </div>
+                <div class="check-result">
+                    <h3>检查结果</h3>
+                    <div id="check-output"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="code-analysis">
+            <h2>代码分析</h2>
+            <div class="analysis-container">
+                <div class="file-selector">
+                    <input type="text" id="file-path" placeholder="输入文件路径...">
+                    <button id="analyze-file-btn">分析文件</button>
+                </div>
+                <div class="project-selector">
+                    <input type="text" id="project-path" placeholder="输入项目目录路径...">
+                    <button id="analyze-project-btn">分析项目</button>
+                </div>
+                <div class="analysis-result">
+                    <h3>分析结果</h3>
+                    <div id="analysis-output"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="knowledge-base">
+            <h2>知识库管理</h2>
+            <div class="knowledge-container">
+                <div class="upload-section">
+                    <h3>添加文档</h3>
+                    <form id="upload-form">
+                        <input type="file" id="file-upload">
+                        <button type="submit">上传文档</button>
+                    </form>
+                    <p class="supported-formats">支持的格式: PDF, TXT, MD, DOCX, PPTX, XLSX, PY, JS, HTML</p>
+                </div>
+                <div class="search-section">
+                    <h3>搜索知识库</h3>
+                    <input type="text" id="kb-query" placeholder="输入搜索内容...">
+                    <button id="kb-search-btn">搜索</button>
+                    <div class="search-results">
+                        <h4>搜索结果</h4>
+                        <div id="kb-results"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <footer>
+        <div class="container">
+            <p>{{ app_name }} &copy; 2025 - 基于DeepSeek和CherryStudio技术构建</p>
+        </div>
+    </footer>
+    
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html> 

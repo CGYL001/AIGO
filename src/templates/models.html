@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>模型管理 - {{ app_name }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}" type="image/x-icon">
+    <style>
+        .model-card {
+            background-color: #fff;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        
+        .model-card h3 {
+            margin-top: 0;
+            color: var(--primary-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .model-status {
+            font-size: 0.8rem;
+            padding: 4px 8px;
+            border-radius: 20px;
+            font-weight: normal;
+        }
+        
+        .status-loaded {
+            background-color: var(--success-color);
+            color: white;
+        }
+        
+        .status-not-loaded {
+            background-color: #ddd;
+            color: #555;
+        }
+        
+        .model-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .model-info-item {
+            display: flex;
+            align-items: center;
+        }
+        
+        .model-info-item strong {
+            margin-right: 5px;
+            min-width: 100px;
+        }
+        
+        .model-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .model-tag {
+            background-color: #f0f4f9;
+            color: #555;
+            padding: 4px 8px;
+            font-size: 0.8rem;
+            border-radius: 15px;
+        }
+        
+        .model-actions {
+            margin-top: 15px;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .model-filter {
+            margin-bottom: 20px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+        
+        .model-filter label {
+            font-weight: bold;
+        }
+        
+        .hardware-info {
+            background-color: #f0f4f9;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .hardware-info h3 {
+            margin-top: 0;
+        }
+        
+        .hardware-info-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        .hardware-metric {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .hardware-metric-value {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--primary-color);
+        }
+        
+        .hardware-metric-label {
+            font-size: 0.9rem;
+            color: #555;
+        }
+        
+        button.secondary {
+            background-color: #eee;
+            color: #333;
+        }
+        
+        button.secondary:hover {
+            background-color: #ddd;
+        }
+        
+        button.danger {
+            background-color: var(--error-color);
+        }
+        
+        button.danger:hover {
+            background-color: #d32f2f;
+        }
+        
+        .system-monitor {
+            background-color: #f3f8ff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #d0e0ff;
+        }
+        
+        .system-monitor h3 {
+            margin-top: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .mode-switch {
+            display: flex;
+            gap: 10px;
+            margin: 10px 0 20px 0;
+            padding: 15px;
+            background-color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .mode-option {
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 12px 20px;
+            flex: 1;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+        
+        .mode-option.active {
+            border-color: var(--primary-color);
+            background-color: rgba(var(--primary-rgb), 0.05);
+        }
+        
+        .mode-option h4 {
+            margin-top: 0;
+        }
+        
+        .mode-option p {
+            font-size: 0.9rem;
+            margin-bottom: 0;
+        }
+        
+        .recommended-models {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 15px;
+        }
+        
+        .recommended-models h4 {
+            margin-top: 0;
+            color: var(--primary-color);
+        }
+        
+        .recommendation-tag {
+            display: inline-block;
+            background-color: #e3f2fd;
+            color: #1565c0;
+            padding: 4px 10px;
+            border-radius: 15px;
+            font-size: 0.85rem;
+            margin-right: 5px;
+        }
+        
+        .system-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .system-stat {
+            background-color: #fff;
+            border-radius: 8px;
+            padding: 15px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        
+        .system-stat-header {
+            color: #555;
+            margin-top: 0;
+            margin-bottom: 10px;
+            font-size: 0.9rem;
+        }
+        
+        .system-stat-value {
+            font-size: 1.4rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: var(--primary-color);
+        }
+        
+        .system-stat-details {
+            font-size: 0.85rem;
+            color: #555;
+        }
+        
+        .refresh-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9rem;
+            font-weight: normal;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>{{ app_name }} <span class="version">v{{ version }}</span></h1>
+            <p>模型管理界面</p>
+        </div>
+    </header>
+    
+    <main class="container">
+        <nav class="breadcrumb">
+            <a href="/">首页</a> &gt; 模型管理
+        </nav>
+        
+        <!-- 系统资源监控部分 -->
+        {% if system_info %}
+        <section class="system-monitor">
+            <h3>
+                系统资源监控
+                <button class="secondary refresh-button" onclick="checkSystemResources()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21.5 2v6h-6M2.5 22v-6h6M2 11.5a10 10 0 0 1 18.38-4.5M22 12.5a10 10 0 0 1-18.38 4.5"/>
+                    </svg>
+                    刷新
+                </button>
+            </h3>
+            
+            <div class="mode-switch">
+                <div class="mode-option {% if running_mode == 'balanced' %}active{% endif %}" id="balanced-mode" onclick="setSystemMode('balanced')">
+                    <h4>平衡模式</h4>
+                    <p>为其他应用程序保留足够资源，适合日常使用</p>
+                </div>
+                <div class="mode-option {% if running_mode == 'performance' %}active{% endif %}" id="performance-mode" onclick="setSystemMode('performance')">
+                    <h4>性能模式</h4>
+                    <p>使用更多系统资源，提供更好的AI性能</p>
+                </div>
+            </div>
+            
+            {% if recommended_models %}
+            <div class="recommended-models">
+                <h4>系统推荐模型</h4>
+                <p>
+                    基于当前系统资源状态，推荐使用:
+                    {% if recommended_models.inference %}
+                    <span class="recommendation-tag">{{ recommended_models.inference.name }}</span>
+                    {% endif %}
+                    {% if recommended_models.embedding %}
+                    <span class="recommendation-tag">{{ recommended_models.embedding.name }}</span>
+                    {% endif %}
+                </p>
+            </div>
+            {% endif %}
+            
+            <div class="system-stats-grid">
+                <!-- CPU信息 -->
+                <div class="system-stat">
+                    <h5 class="system-stat-header">CPU信息</h5>
+                    <div class="system-stat-value">{{ system_info.cpu.physical_cores }} 核心 / {{ system_info.cpu.logical_cores }} 线程</div>
+                    <div class="system-stat-details">当前使用率: {{ system_info.cpu.cpu_percent }}%</div>
+                </div>
+                
+                <!-- 内存信息 -->
+                <div class="system-stat">
+                    <h5 class="system-stat-header">系统内存</h5>
+                    <div class="system-stat-value">{{ system_info.memory.total_gb }} GB</div>
+                    <div class="system-stat-details">可用内存: {{ system_info.memory.available_gb }} GB ({{ 100 - system_info.memory.percent_used }}%)</div>
+                </div>
+                
+                <!-- 虚拟内存信息 -->
+                <div class="system-stat">
+                    <h5 class="system-stat-header">虚拟内存 / 页面文件</h5>
+                    <div class="system-stat-value">{{ system_info.virtual_memory.total_gb }} GB</div>
+                    <div class="system-stat-details">已使用: {{ system_info.virtual_memory.percent_used }}%</div>
+                </div>
+                
+                <!-- GPU信息（如果有） -->
+                {% if system_info.gpu and system_info.gpu|length > 0 %}
+                {% for gpu in system_info.gpu %}
+                <div class="system-stat">
+                    <h5 class="system-stat-header">GPU - {{ gpu.name }}</h5>
+                    {% if gpu.total_vram_gb %}
+                    <div class="system-stat-value">{{ gpu.total_vram_gb }} GB VRAM</div>
+                    {% if gpu.free_vram_gb %}
+                    <div class="system-stat-details">可用显存: {{ gpu.free_vram_gb }} GB</div>
+                    {% endif %}
+                    {% else %}
+                    <div class="system-stat-value">已检测到</div>
+                    <div class="system-stat-details">无法获取详细信息</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                {% endif %}
+                
+                <!-- 操作系统信息 -->
+                <div class="system-stat">
+                    <h5 class="system-stat-header">操作系统</h5>
+                    <div class="system-stat-value">{{ system_info.os }}</div>
+                    <div class="system-stat-details">{{ system_info.os_version }}</div>
+                </div>
+            </div>
+        </section>
+        {% endif %}
+        
+        <section class="hardware-info">
+            <h3>硬件信息</h3>
+            <div class="hardware-info-grid">
+                <div class="hardware-metric">
+                    <span class="hardware-metric-value">{{ hardware_info.cpu_percent }}%</span>
+                    <span class="hardware-metric-label">CPU使用率</span>
+                </div>
+                <div class="hardware-metric">
+                    <span class="hardware-metric-value">{{ hardware_info.memory_used_gb }}GB / {{ hardware_info.memory_total_gb }}GB</span>
+                    <span class="hardware-metric-label">内存使用</span>
+                </div>
+                {% if hardware_info.has_gpu %}
+                <div class="hardware-metric">
+                    <span class="hardware-metric-value">{{ hardware_info.gpu_percent }}%</span>
+                    <span class="hardware-metric-label">GPU使用率</span>
+                </div>
+                <div class="hardware-metric">
+                    <span class="hardware-metric-value">{{ hardware_info.gpu_memory_used_gb }}GB / {{ hardware_info.gpu_memory_total_gb }}GB</span>
+                    <span class="hardware-metric-label">GPU内存</span>
+                </div>
+                {% endif %}
+                <div class="hardware-metric">
+                    <span class="hardware-metric-value">{{ hardware_info.disk_used_gb }}GB / {{ hardware_info.disk_total_gb }}GB</span>
+                    <span class="hardware-metric-label">磁盘使用</span>
+                </div>
+            </div>
+        </section>
+        
+        <div class="model-filter">
+            <label>过滤模型:</label>
+            <select id="model-type-filter">
+                <option value="all">所有模型</option>
+                <option value="code_completion">代码补全</option>
+                <option value="code_optimization">代码优化</option>
+                <option value="bug_fixing">错误修复</option>
+                <option value="embedding">文本嵌入</option>
+            </select>
+            
+            <div>
+                <input type="checkbox" id="compatible-only" checked>
+                <label for="compatible-only">仅显示兼容硬件的模型</label>
+            </div>
+            
+            <div>
+                <input type="checkbox" id="show-loaded-only">
+                <label for="show-loaded-only">仅显示已加载模型</label>
+            </div>
+        </div>
+        
+        <section id="models-container">
+            {% for model in available_models %}
+            <div class="model-card" 
+                 data-model-name="{{ model.name }}" 
+                 data-model-types="{{ ','.join(model.best_for) if model.best_for else 'general' }}" 
+                 data-is-loaded="{{ 'true' if model.name in loaded_models else 'false' }}"
+                 data-is-compatible="{{ 'true' if model.is_compatible else 'false' }}">
+                <h3>
+                    {{ model.name }}
+                    {% if model.name in loaded_models %}
+                    <span class="model-status status-loaded">已加载</span>
+                    {% else %}
+                    <span class="model-status status-not-loaded">未加载</span>
+                    {% endif %}
+                </h3>
+                <p>{{ model.description }}</p>
+                <div class="model-info">
+                    <div class="model-info-item">
+                        <strong>所需RAM:</strong> {{ model.ram_required }}
+                    </div>
+                    <div class="model-info-item">
+                        <strong>所需VRAM:</strong> {{ model.vram_required }}
+                    </div>
+                    {% if model.best_for %}
+                    <div class="model-info-item" style="grid-column: span 2;">
+                        <strong>最适合:</strong>
+                        <div class="model-tags">
+                            {% for tag in model.best_for %}
+                            <span class="model-tag">{{ tag }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+                <div class="model-actions">
+                    {% if model.name in loaded_models %}
+                    <button class="danger" onclick="unloadModel('{{ model.name }}')">卸载模型</button>
+                    <button onclick="testModel('{{ model.name }}')">测试模型</button>
+                    {% else %}
+                    <button onclick="loadModel('{{ model.name }}')">加载模型</button>
+                    {% endif %}
+                    <button class="secondary" onclick="showModelDetails('{{ model.name }}')">详情</button>
+                </div>
+            </div>
+            {% endfor %}
+        </section>
+        
+        <div id="loading-indicator" style="display:none; text-align:center;">
+            <p>正在处理，请稍候...</p>
+        </div>
+        
+        <div id="no-models-message" style="display:none; text-align:center; margin:30px;">
+            <p>没有符合条件的模型</p>
+        </div>
+    </main>
+    
+    <footer>
+        <div class="container">
+            <p>{{ app_name }} &copy; 2025 - 基于DeepSeek和CherryStudio技术构建</p>
+        </div>
+    </footer>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 设置过滤器
+            const typeFilter = document.getElementById('model-type-filter');
+            const compatibleOnly = document.getElementById('compatible-only');
+            const loadedOnly = document.getElementById('show-loaded-only');
+            
+            // 筛选函数
+            function filterModels() {
+                const selectedType = typeFilter.value;
+                const showCompatibleOnly = compatibleOnly.checked;
+                const showLoadedOnly = loadedOnly.checked;
+                
+                const models = document.querySelectorAll('.model-card');
+                let visibleCount = 0;
+                
+                models.forEach(model => {
+                    // 获取模型属性
+                    const modelTypes = model.dataset.modelTypes.split(',');
+                    const isLoaded = model.dataset.isLoaded === 'true';
+                    const isCompatible = model.dataset.isCompatible === 'true';
+                    
+                    // 应用筛选规则
+                    let visible = true;
+                    
+                    if (selectedType !== 'all' && !modelTypes.includes(selectedType)) {
+                        visible = false;
+                    }
+                    
+                    if (showCompatibleOnly && !isCompatible) {
+                        visible = false;
+                    }
+                    
+                    if (showLoadedOnly && !isLoaded) {
+                        visible = false;
+                    }
+                    
+                    // 设置可见性
+                    model.style.display = visible ? 'block' : 'none';
+                    
+                    if (visible) visibleCount++;
+                });
+                
+                // 显示或隐藏"无模型"消息
+                document.getElementById('no-models-message').style.display = 
+                    visibleCount === 0 ? 'block' : 'none';
+            }
+            
+            // 绑定过滤事件
+            typeFilter.addEventListener('change', filterModels);
+            compatibleOnly.addEventListener('change', filterModels);
+            loadedOnly.addEventListener('change', filterModels);
+            
+            // 初始化过滤
+            filterModels();
+        });
+        
+        // 模型操作函数
+        function loadModel(modelName) {
+            showLoading();
+            fetch('/api/models/load', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ model_name: modelName })
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('加载模型失败: ' + data.error);
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                alert('操作失败: ' + error);
+            });
+        }
+        
+        function unloadModel(modelName) {
+            if (!confirm(`确定要卸载模型 ${modelName} 吗？`)) return;
+            
+            showLoading();
+            fetch('/api/models/unload', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ model_name: modelName })
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('卸载模型失败: ' + data.error);
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                alert('操作失败: ' + error);
+            });
+        }
+        
+        function testModel(modelName) {
+            showLoading();
+            fetch('/api/models/test', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ model_name: modelName })
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideLoading();
+                if (data.success) {
+                    alert(`模型 ${modelName} 测试成功！\n响应时间: ${data.response_time}ms\n输出: ${data.output}`);
+                } else {
+                    alert('测试模型失败: ' + data.error);
+                }
+            })
+            .catch(error => {
+                hideLoading();
+                alert('操作失败: ' + error);
+            });
+        }
+        
+        function showModelDetails(modelName) {
+            // 跳转到模型详情页
+            window.location.href = `/models/${modelName}`;
+        }
+        
+        function showLoading() {
+            document.getElementById('loading-indicator').style.display = 'block';
+        }
+        
+        function hideLoading() {
+            document.getElementById('loading-indicator').style.display = 'none';
+        }
+        
+        // 设置系统运行模式
+        function setSystemMode(mode) {
+            fetch('/api/system/set_mode', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ mode: mode })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    // 更新UI
+                    document.getElementById('balanced-mode').classList.toggle('active', mode === 'balanced');
+                    document.getElementById('performance-mode').classList.toggle('active', mode === 'performance');
+                    
+                    // 显示提示信息
+                    showNotification(`已切换到${mode === 'balanced' ? '平衡' : '性能'}模式`, 'success');
+                    
+                    // 如果配置了自动推荐模型，需要刷新页面以应用新的模型设置
+                    setTimeout(function() {
+                        location.reload();
+                    }, 1500);
+                } else {
+                    showNotification(`切换模式失败: ${data.error}`, 'error');
+                }
+            })
+            .catch(error => {
+                showNotification('系统错误，请重试', 'error');
+                console.error('Error:', error);
+            });
+        }
+        
+        // 手动检测系统资源
+        function checkSystemResources() {
+            showNotification('正在检测系统资源...', 'info');
+            
+            fetch('/api/system/check_resources', {
+                method: 'POST'
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification('系统资源检测完成', 'success');
+                    // 刷新页面以显示最新信息
+                    setTimeout(function() {
+                        location.reload();
+                    }, 1000);
+                } else {
+                    showNotification(`系统资源检测失败: ${data.error}`, 'error');
+                }
+            })
+            .catch(error => {
+                showNotification('系统错误，请重试', 'error');
+                console.error('Error:', error);
+            });
+        }
+        
+        // 通知显示函数
+        function showNotification(message, type = 'info') {
+            // 检查是否已有通知容器
+            let notificationContainer = document.getElementById('notification-container');
+            if (!notificationContainer) {
+                notificationContainer = document.createElement('div');
+                notificationContainer.id = 'notification-container';
+                notificationContainer.style.position = 'fixed';
+                notificationContainer.style.top = '20px';
+                notificationContainer.style.right = '20px';
+                notificationContainer.style.zIndex = '1000';
+                document.body.appendChild(notificationContainer);
+            }
+            
+            // 创建通知元素
+            const notification = document.createElement('div');
+            notification.style.backgroundColor = type === 'error' ? '#f44336' : 
+                                               type === 'success' ? '#4caf50' : '#2196f3';
+            notification.style.color = 'white';
+            notification.style.padding = '12px 24px';
+            notification.style.marginBottom = '10px';
+            notification.style.borderRadius = '4px';
+            notification.style.boxShadow = '0 2px 4px rgba(0,0,0,0.2)';
+            notification.style.minWidth = '250px';
+            notification.style.transition = 'all 0.3s ease';
+            notification.textContent = message;
+            
+            // 添加到容器
+            notificationContainer.appendChild(notification);
+            
+            // 设置自动消失
+            setTimeout(() => {
+                notification.style.opacity = '0';
+                setTimeout(() => {
+                    notification.remove();
+                }, 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html> 

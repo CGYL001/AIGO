@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ app_name }} - 代码仓库管理</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}" type="image/x-icon">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>{{ app_name }} <span class="version">v{{ version }}</span></h1>
+            <p>代码仓库管理</p>
+        </div>
+    </header>
+    
+    <nav class="main-nav">
+        <div class="container">
+            <ul>
+                <li><a href="/">首页</a></li>
+                <li><a href="/models">模型管理</a></li>
+                <li><a href="/repository" class="active">代码仓库</a></li>
+                <li><a href="#about">关于</a></li>
+            </ul>
+        </div>
+    </nav>
+    
+    <main class="container">
+        <div class="tabs">
+            <button class="tab-btn active" data-tab="local-repos">本地仓库</button>
+            <button class="tab-btn" data-tab="remote-repos">远程仓库</button>
+            <button class="tab-btn" data-tab="repo-permissions">仓库权限</button>
+            <button class="tab-btn" data-tab="auth-settings">权限设置</button>
+        </div>
+        
+        <div class="tab-content active" id="local-repos">
+            <h2>本地仓库管理</h2>
+            <div class="repo-container">
+                <div class="repo-list">
+                    <h3>本地仓库列表</h3>
+                    <div id="local-repo-list">
+                        {% if local_repos %}
+                            {% for repo in local_repos %}
+                            <div class="repo-item" data-repo-path="{{ repo.path }}">
+                                <div class="repo-header">
+                                    <h4 class="repo-name">{{ repo.name }}</h4>
+                                    <span class="repo-platform {{ repo.platform }}">{{ repo.platform }}</span>
+                                </div>
+                                <div class="repo-info">
+                                    <p class="repo-path"><strong>路径:</strong> {{ repo.path }}</p>
+                                    <p class="repo-branch"><strong>当前分支:</strong> {{ repo.current_branch }}</p>
+                                    {% if repo.last_commit %}
+                                    <p class="repo-commit"><strong>最后提交:</strong> {{ repo.last_commit.message }} ({{ repo.last_commit.author }})</p>
+                                    {% endif %}
+                                </div>
+                                <div class="repo-actions">
+                                    <button class="btn btn-pull" data-repo-path="{{ repo.path }}">拉取更新</button>
+                                    <button class="btn btn-push" data-repo-path="{{ repo.path }}">推送更改</button>
+                                    <button class="btn btn-delete" data-repo-path="{{ repo.path }}">删除仓库</button>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        {% else %}
+                            <div class="empty-message">
+                                <p>暂无本地仓库</p>
+                                <p>请从远程仓库克隆或导入本地文件夹</p>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="remote-repos">
+            <h2>远程仓库管理</h2>
+            <div class="platform-container">
+                <div class="platform-selector">
+                    <h3>选择平台</h3>
+                    <div class="platform-list">
+                        {% for platform in platforms %}
+                        <div class="platform-item" data-platform="{{ platform }}">
+                            <img src="{{ url_for('static', filename='img/' + platform + '-logo.png') }}" alt="{{ platform }}" class="platform-logo">
+                            <span class="platform-name">{{ platform }}</span>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="platform-auth">
+                    <h3>平台认证</h3>
+                    <div class="auth-form">
+                        <div class="form-group">
+                            <label for="platform-select">平台:</label>
+                            <select id="platform-select">
+                                {% for platform in platforms %}
+                                <option value="{{ platform }}">{{ platform }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="auth-token">访问令牌:</label>
+                            <input type="password" id="auth-token" placeholder="输入访问令牌">
+                            <p class="help-text">请提供平台的个人访问令牌</p>
+                        </div>
+                        <button id="auth-btn" class="btn">认证</button>
+                    </div>
+                    <div id="auth-status"></div>
+                </div>
+                
+                <div class="remote-repo-list">
+                    <h3>远程仓库列表</h3>
+                    <div class="form-group">
+                        <label for="username-input">用户名:</label>
+                        <input type="text" id="username-input" placeholder="留空则获取自己的仓库">
+                        <button id="list-repos-btn" class="btn">获取仓库列表</button>
+                    </div>
+                    <div id="remote-repos-container"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="repo-permissions">
+            <h2>仓库权限管理</h2>
+            <div class="repo-permissions-container">
+                <div class="repo-selector">
+                    <h3>选择仓库</h3>
+                    <div class="form-group">
+                        <select id="permission-repo-select">
+                            <option value="">-- 请选择仓库 --</option>
+                            {% for repo in local_repos %}
+                            <option value="{{ repo.path }}">{{ repo.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <button id="load-permissions-btn" class="btn">加载权限设置</button>
+                    </div>
+                </div>
+                
+                <div class="permission-tabs">
+                    <button class="permission-tab-btn active" data-tab="roles">角色管理</button>
+                    <button class="permission-tab-btn" data-tab="protection">保护规则</button>
+                    <button class="permission-tab-btn" data-tab="audit">审计日志</button>
+                </div>
+                
+                <div class="permission-tab-content active" id="roles">
+                    <h3>角色管理</h3>
+                    <div class="role-info">
+                        <p>预定义角色权限:</p>
+                        <ul>
+                            <li><strong>admin</strong> - 仓库管理员，拥有所有权限</li>
+                            <li><strong>developer</strong> - 开发者，可以克隆、拉取和推送，但不能删除仓库或修改设置</li>
+                            <li><strong>reader</strong> - 只读用户，只能克隆和拉取代码</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="role-assignments">
+                        <h4>用户角色分配</h4>
+                        <div id="role-assignments-list"></div>
+                        
+                        <div class="role-assignment-form">
+                            <h4>添加/修改角色</h4>
+                            <div class="form-group">
+                                <label for="user-id-input">用户ID:</label>
+                                <input type="text" id="user-id-input" placeholder="输入用户ID">
+                            </div>
+                            <div class="form-group">
+                                <label for="role-select">角色:</label>
+                                <select id="role-select">
+                                    <option value="admin">管理员</option>
+                                    <option value="developer">开发者</option>
+                                    <option value="reader">只读用户</option>
+                                </select>
+                            </div>
+                            <button id="assign-role-btn" class="btn">分配角色</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="permission-tab-content" id="protection">
+                    <h3>保护规则</h3>
+                    <div class="protection-rules-form">
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="require-review-checkbox">
+                                要求代码审查
+                            </label>
+                            <p class="help-text">启用后，推送更改前需要代码审查</p>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label>
+                                <input type="checkbox" id="block-force-push-checkbox">
+                                禁止强制推送
+                            </label>
+                            <p class="help-text">禁止使用--force选项强制推送</p>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="protected-branches-input">受保护分支:</label>
+                            <textarea id="protected-branches-input" placeholder="每行一个分支名"></textarea>
+                            <p class="help-text">受保护分支只允许管理员直接推送</p>
+                        </div>
+                        
+                        <button id="update-protection-btn" class="btn">更新保护规则</button>
+                    </div>
+                </div>
+                
+                <div class="permission-tab-content" id="audit">
+                    <h3>审计日志</h3>
+                    <div class="audit-log-container">
+                        <div class="audit-controls">
+                            <button id="refresh-audit-btn" class="btn">刷新日志</button>
+                            <div class="form-group">
+                                <label for="audit-limit-input">显示条数:</label>
+                                <input type="number" id="audit-limit-input" value="50" min="1" max="500">
+                            </div>
+                        </div>
+                        
+                        <div class="audit-log-list">
+                            <table id="audit-log-table">
+                                <thead>
+                                    <tr>
+                                        <th>时间</th>
+                                        <th>用户</th>
+                                        <th>操作</th>
+                                        <th>详情</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="audit-log-body">
+                                    <!-- 审计日志将被动态添加到这里 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="auth-settings">
+            <h2>权限设置</h2>
+            <div class="auth-settings-container">
+                <div class="auth-mode-selector">
+                    <h3>权限模式</h3>
+                    <div class="mode-options">
+                        <div class="mode-option">
+                            <input type="radio" id="mode-strict" name="auth-mode" value="strict" {% if auth_mode == 'strict' %}checked{% endif %}>
+                            <label for="mode-strict">
+                                <h4>严格模式</h4>
+                                <p>每次敏感操作都需要确认</p>
+                            </label>
+                        </div>
+                        <div class="mode-option">
+                            <input type="radio" id="mode-trust" name="auth-mode" value="trust" {% if auth_mode == 'trust' %}checked{% endif %}>
+                            <label for="mode-trust">
+                                <h4>信任模式</h4>
+                                <p>三次确认后获得信任，后续操作无需重复确认</p>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="trust-status">
+                    <h3>信任状态</h3>
+                    <div class="status-info">
+                        <p><strong>当前模式:</strong> <span id="current-mode">{{ auth_mode }}</span></p>
+                        <p><strong>信任状态:</strong> <span id="trusted-status">{{ "已信任" if trust_status.trusted else "未信任" }}</span></p>
+                        <p><strong>确认计数:</strong> <span id="confirm-count">{{ trust_status.confirm_count }}/{{ trust_status.required_count }}</span></p>
+                    </div>
+                    <button id="reset-trust-btn" class="btn">重置信任状态</button>
+                </div>
+                
+                <div class="sensitive-operations">
+                    <h3>敏感操作列表</h3>
+                    <ul>
+                        <li>克隆仓库 (repo_clone)</li>
+                        <li>拉取更新 (repo_pull)</li>
+                        <li>推送更改 (repo_push)</li>
+                        <li>删除仓库 (repo_delete)</li>
+                        <li>执行系统命令 (system_command)</li>
+                        <li>删除文件 (file_delete)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </main>
+    
+    <!-- 确认对话框 -->
+    <div id="confirm-dialog" class="dialog">
+        <div class="dialog-content">
+            <h3>操作确认</h3>
+            <p id="confirm-message"></p>
+            <div class="dialog-buttons">
+                <button id="confirm-yes" class="btn btn-primary">确认</button>
+                <button id="confirm-no" class="btn">取消</button>
+            </div>
+            <div class="trust-info">
+                <p id="trust-progress"></p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 推送对话框 -->
+    <div id="push-dialog" class="dialog">
+        <div class="dialog-content">
+            <h3>推送更改</h3>
+            <div class="form-group">
+                <label for="commit-message">提交信息:</label>
+                <textarea id="commit-message" placeholder="请输入提交信息"></textarea>
+            </div>
+            <div class="form-group">
+                <label for="push-branch">分支:</label>
+                <input type="text" id="push-branch" placeholder="留空则使用当前分支">
+            </div>
+            <div class="dialog-buttons">
+                <button id="push-confirm" class="btn btn-primary">推送</button>
+                <button id="push-cancel" class="btn">取消</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 克隆对话框 -->
+    <div id="clone-dialog" class="dialog">
+        <div class="dialog-content">
+            <h3>克隆仓库</h3>
+            <div class="form-group">
+                <label for="clone-repo-name">仓库名称:</label>
+                <input type="text" id="clone-repo-name" readonly>
+            </div>
+            <div class="form-group">
+                <label for="clone-branch">分支:</label>
+                <input type="text" id="clone-branch" placeholder="留空则使用默认分支">
+            </div>
+            <div class="dialog-buttons">
+                <button id="clone-confirm" class="btn btn-primary">克隆</button>
+                <button id="clone-cancel" class="btn">取消</button>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <div class="container">
+            <p>{{ app_name }} &copy; 2025 - 基于DeepSeek和CherryStudio技术构建</p>
+        </div>
+    </footer>
+    
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/repository.js') }}"></script>
+</body>
+</html> 

@@ -1,0 +1,807 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>项目偏好设置 - CodeAssistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="icon" href="{{ url_for('static', filename='img/favicon.ico') }}" type="image/x-icon">
+    <style>
+        .preference-container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .preference-wizard {
+            background-color: #fff;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+        }
+        
+        .wizard-header {
+            padding: 20px;
+            background-color: var(--primary-color);
+            color: white;
+            text-align: center;
+        }
+        
+        .wizard-steps {
+            display: flex;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .wizard-step {
+            flex: 1;
+            text-align: center;
+            padding: 15px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+            transition: all 0.3s;
+            font-weight: bold;
+            color: #777;
+        }
+        
+        .wizard-step.active {
+            color: var(--primary-color);
+            border-bottom-color: var(--primary-color);
+        }
+        
+        .wizard-step.completed {
+            color: var(--success-color);
+            border-bottom-color: var(--success-color);
+        }
+        
+        .wizard-content {
+            padding: 20px;
+            min-height: 400px;
+        }
+        
+        .step-content {
+            display: none;
+        }
+        
+        .step-content.active {
+            display: block;
+        }
+        
+        .wizard-footer {
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            border-top: 1px solid #eee;
+            background-color: #f9f9f9;
+        }
+        
+        .form-section {
+            margin-bottom: 20px;
+        }
+        
+        .form-section h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #eee;
+        }
+        
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .template-card {
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .template-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .template-card.selected {
+            border-color: var(--primary-color);
+            background-color: rgba(var(--primary-rgb), 0.05);
+        }
+        
+        .template-card i {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            color: var(--primary-color);
+        }
+        
+        .preference-group {
+            margin-bottom: 20px;
+        }
+        
+        .checkbox-group {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 10px;
+        }
+        
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+        }
+        
+        .checkbox-item input[type="checkbox"] {
+            margin-right: 8px;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 15px;
+        }
+        
+        .form-group {
+            flex: 1;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        .summary-card {
+            background-color: #f9f9f9;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .summary-heading {
+            font-weight: bold;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+        }
+        
+        @media (max-width: 768px) {
+            .wizard-steps {
+                flex-direction: column;
+            }
+            
+            .form-row {
+                flex-direction: column;
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="container">
+            <h1>{{ app_name }} <span class="version">v{{ version }}</span></h1>
+            <p>开发者偏好设置</p>
+        </div>
+    </header>
+    
+    <main class="preference-container">
+        <nav class="breadcrumb">
+            <a href="/">首页</a> &gt; 开发者偏好
+        </nav>
+        
+        <div class="preference-wizard">
+            <div class="wizard-header">
+                <h2>设置您的编程偏好</h2>
+                <p>帮助AI更好地理解您的开发风格和需求</p>
+            </div>
+            
+            <div class="wizard-steps">
+                <div class="wizard-step active" data-step="1">1. 项目类型</div>
+                <div class="wizard-step" data-step="2">2. 代码风格</div>
+                <div class="wizard-step" data-step="3">3. 功能需求</div>
+                <div class="wizard-step" data-step="4">4. 确认</div>
+            </div>
+            
+            <form id="preference-form" method="post" action="/api/preferences/create">
+                <div class="wizard-content">
+                    <!-- 步骤1: 项目类型 -->
+                    <div class="step-content active" id="step-1">
+                        <div class="form-section">
+                            <h3>选择项目模板</h3>
+                            <div class="grid-container">
+                                <div class="template-card" data-template="web_app">
+                                    <i class="fa fa-globe"></i>
+                                    <h4>Web应用</h4>
+                                    <p>网站、Web API和全栈应用</p>
+                                </div>
+                                <div class="template-card" data-template="cli">
+                                    <i class="fa fa-terminal"></i>
+                                    <h4>命令行工具</h4>
+                                    <p>CLI应用和脚本工具</p>
+                                </div>
+                                <div class="template-card" data-template="data_science">
+                                    <i class="fa fa-chart-bar"></i>
+                                    <h4>数据科学</h4>
+                                    <p>数据分析和机器学习项目</p>
+                                </div>
+                                <div class="template-card" data-template="api">
+                                    <i class="fa fa-plug"></i>
+                                    <h4>API服务</h4>
+                                    <p>专注的API和微服务</p>
+                                </div>
+                                <div class="template-card" data-template="desktop_app">
+                                    <i class="fa fa-desktop"></i>
+                                    <h4>桌面应用</h4>
+                                    <p>桌面软件和GUI应用</p>
+                                </div>
+                                <div class="template-card" data-template="custom">
+                                    <i class="fa fa-cog"></i>
+                                    <h4>自定义</h4>
+                                    <p>完全自定义项目类型</p>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="form-section" id="custom-project-section" style="display: none;">
+                            <h3>自定义项目设置</h3>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="project-domain">项目领域</label>
+                                    <select id="project-domain" name="project_domain" class="form-control">
+                                        <option value="web_frontend">Web前端</option>
+                                        <option value="web_backend">Web后端</option>
+                                        <option value="desktop_app">桌面应用</option>
+                                        <option value="mobile_app">移动应用</option>
+                                        <option value="data_science">数据科学</option>
+                                        <option value="devops">DevOps</option>
+                                        <option value="embedded">嵌入式系统</option>
+                                        <option value="game_dev">游戏开发</option>
+                                        <option value="blockchain">区块链</option>
+                                        <option value="ai_ml">AI/机器学习</option>
+                                        <option value="iot">物联网</option>
+                                        <option value="api">API服务</option>
+                                        <option value="cli">命令行工具</option>
+                                        <option value="other">其他</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="testing-strategy">测试策略</label>
+                                    <select id="testing-strategy" name="testing_strategy" class="form-control">
+                                        <option value="unit_testing">单元测试</option>
+                                        <option value="integration_testing">集成测试</option>
+                                        <option value="tdd">测试驱动开发(TDD)</option>
+                                        <option value="bdd">行为驱动开发(BDD)</option>
+                                        <option value="minimal_testing">最小测试</option>
+                                        <option value="no_testing">不包含测试</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="preferred-languages">偏好语言(多选，逗号分隔)</label>
+                                    <input type="text" id="preferred-languages" name="preferred_languages" class="form-control" placeholder="例如: python,javascript,typescript">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="framework-preference">框架偏好</label>
+                                    <select id="framework-preference" name="framework_preference" class="form-control">
+                                        <option value="modern">现代框架</option>
+                                        <option value="lightweight">轻量级框架</option>
+                                        <option value="full_featured">全功能框架</option>
+                                        <option value="stable">稳定框架</option>
+                                        <option value="popular">流行框架</option>
+                                        <option value="no_framework">无框架</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="architecture-patterns">架构模式(多选，逗号分隔)</label>
+                                <input type="text" id="architecture-patterns" name="architecture_patterns" class="form-control" placeholder="例如: MVC,REST API,Microservices">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 步骤2: 代码风格 -->
+                    <div class="step-content" id="step-2">
+                        <div class="form-section">
+                            <h3>代码风格偏好</h3>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="style-type">编码风格</label>
+                                    <select id="style-type" name="style_type" class="form-control">
+                                        <option value="standard">标准风格 - 遵循语言规范</option>
+                                        <option value="concise">简洁风格 - 最小化代码行数</option>
+                                        <option value="descriptive">描述性风格 - 注重命名和注释</option>
+                                        <option value="functional">函数式风格 - 强调不可变性和纯函数</option>
+                                        <option value="oop">面向对象风格 - 强调封装和继承</option>
+                                        <option value="procedural">过程式风格 - 以流程和步骤为主</option>
+                                    </select>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="comment-level">注释级别</label>
+                                    <select id="comment-level" name="comment_level" class="form-control">
+                                        <option value="moderate">适度注释 - 主要函数和复杂逻辑</option>
+                                        <option value="minimal">最小注释 - 仅关键点</option>
+                                        <option value="comprehensive">全面注释 - 详细说明</option>
+                                    </select>
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="line-length">行长度限制</label>
+                                    <input type="number" id="line-length" name="line_length" class="form-control" value="80" min="60" max="120">
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="tab-width">缩进宽度</label>
+                                    <input type="number" id="tab-width" name="tab_width" class="form-control" value="4" min="2" max="8">
+                                </div>
+                            </div>
+                            
+                            <div class="preference-group">
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="use-tabs" name="use_tabs">
+                                        <label for="use-tabs">使用制表符(Tab)而非空格</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="prefer-single-quotes" name="prefer_single_quotes">
+                                        <label for="prefer-single-quotes">优先使用单引号</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="trailing-commas" name="trailing_commas" checked>
+                                        <label for="trailing-commas">使用尾随逗号</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="bracket-spacing" name="bracket_spacing" checked>
+                                        <label for="bracket-spacing">括号内使用空格</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="arrow-parens" name="arrow_parens" checked>
+                                        <label for="arrow-parens">箭头函数总是使用括号</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="semicolons" name="semicolons" checked>
+                                        <label for="semicolons">使用分号</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="explicit-types" name="always_use_explicit_types">
+                                        <label for="explicit-types">总是使用显式类型标注</label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 步骤3: 功能需求 -->
+                    <div class="step-content" id="step-3">
+                        <div class="form-section">
+                            <h3>功能需求</h3>
+                            <p>选择您的项目需要包含的功能</p>
+                            
+                            <div class="preference-group">
+                                <h4>核心功能</h4>
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="authentication" name="authentication">
+                                        <label for="authentication">用户认证</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="authorization" name="authorization">
+                                        <label for="authorization">权限控制</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="data-validation" name="data_validation" checked>
+                                        <label for="data-validation">数据验证</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="error-handling" name="error_handling" checked>
+                                        <label for="error-handling">错误处理</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="logging" name="logging" checked>
+                                        <label for="logging">日志记录</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="caching" name="caching">
+                                        <label for="caching">缓存机制</label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="preference-group">
+                                <h4>高级功能</h4>
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="internationalization" name="internationalization">
+                                        <label for="internationalization">国际化</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="performance-optimization" name="performance_optimization">
+                                        <label for="performance-optimization">性能优化</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="security-features" name="security_features" checked>
+                                        <label for="security-features">安全特性</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="monitoring" name="monitoring">
+                                        <label for="monitoring">监控功能</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="analytics" name="analytics">
+                                        <label for="analytics">分析功能</label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="preference-group">
+                                <h4>集成功能</h4>
+                                <div class="checkbox-group">
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="search-functionality" name="search_functionality">
+                                        <label for="search-functionality">搜索功能</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="file-handling" name="file_handling">
+                                        <label for="file-handling">文件处理</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="email-integration" name="email_integration">
+                                        <label for="email-integration">邮件集成</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="payment-processing" name="payment_processing">
+                                        <label for="payment-processing">支付处理</label>
+                                    </div>
+                                    <div class="checkbox-item">
+                                        <input type="checkbox" id="social-integration" name="social_integration">
+                                        <label for="social-integration">社交媒体集成</label>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="form-group">
+                                <label for="custom-features">自定义功能(每行一个)</label>
+                                <textarea id="custom-features" name="custom_features" class="form-control" rows="3" placeholder="在此输入其他自定义功能需求，每行一个"></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- 步骤4: 确认 -->
+                    <div class="step-content" id="step-4">
+                        <div class="form-section">
+                            <h3>偏好设置摘要</h3>
+                            
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="preference-name">偏好名称</label>
+                                    <input type="text" id="preference-name" name="preference_name" class="form-control" placeholder="例如: 我的Web项目偏好" required>
+                                </div>
+                                
+                                <div class="form-group">
+                                    <label for="preference-description">描述(可选)</label>
+                                    <input type="text" id="preference-description" name="preference_description" class="form-control" placeholder="简短描述此偏好设置">
+                                </div>
+                            </div>
+                            
+                            <div class="summary-card">
+                                <div class="summary-heading">项目类型</div>
+                                <div id="project-summary"></div>
+                            </div>
+                            
+                            <div class="summary-card">
+                                <div class="summary-heading">代码风格</div>
+                                <div id="style-summary"></div>
+                            </div>
+                            
+                            <div class="summary-card">
+                                <div class="summary-heading">功能需求</div>
+                                <div id="feature-summary"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="wizard-footer">
+                    <button type="button" id="prev-btn" class="btn btn-secondary" disabled>上一步</button>
+                    <button type="button" id="next-btn" class="btn btn-primary">下一步</button>
+                    <button type="submit" id="submit-btn" class="btn btn-success" style="display: none;">保存偏好</button>
+                </div>
+            </form>
+        </div>
+    </main>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // 步骤管理
+            const steps = document.querySelectorAll('.wizard-step');
+            const stepContents = document.querySelectorAll('.step-content');
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const submitBtn = document.getElementById('submit-btn');
+            let currentStep = 1;
+            
+            // 项目模板选择
+            const templateCards = document.querySelectorAll('.template-card');
+            const customProjectSection = document.getElementById('custom-project-section');
+            
+            // 切换步骤
+            function goToStep(step) {
+                // 隐藏所有步骤内容
+                stepContents.forEach(content => content.classList.remove('active'));
+                
+                // 更新步骤指示器
+                steps.forEach(s => {
+                    const stepNum = parseInt(s.dataset.step);
+                    s.classList.remove('active', 'completed');
+                    
+                    if (stepNum === step) {
+                        s.classList.add('active');
+                    } else if (stepNum < step) {
+                        s.classList.add('completed');
+                    }
+                });
+                
+                // 显示当前步骤内容
+                document.getElementById(`step-${step}`).classList.add('active');
+                
+                // 更新按钮状态
+                prevBtn.disabled = step === 1;
+                
+                if (step === 4) {
+                    nextBtn.style.display = 'none';
+                    submitBtn.style.display = 'block';
+                    updateSummary();
+                } else {
+                    nextBtn.style.display = 'block';
+                    submitBtn.style.display = 'none';
+                }
+                
+                currentStep = step;
+            }
+            
+            // 处理下一步按钮点击
+            nextBtn.addEventListener('click', function() {
+                if (currentStep < 4) {
+                    goToStep(currentStep + 1);
+                }
+            });
+            
+            // 处理上一步按钮点击
+            prevBtn.addEventListener('click', function() {
+                if (currentStep > 1) {
+                    goToStep(currentStep - 1);
+                }
+            });
+            
+            // 处理步骤指示器点击
+            steps.forEach(step => {
+                step.addEventListener('click', function() {
+                    const stepNum = parseInt(this.dataset.step);
+                    if (stepNum <= currentStep || document.querySelector(`.wizard-step[data-step="${stepNum-1}"]`).classList.contains('completed')) {
+                        goToStep(stepNum);
+                    }
+                });
+            });
+            
+            // 处理模板选择
+            templateCards.forEach(card => {
+                card.addEventListener('click', function() {
+                    // 移除其他卡片的选择状态
+                    templateCards.forEach(c => c.classList.remove('selected'));
+                    
+                    // 添加当前卡片的选择状态
+                    this.classList.add('selected');
+                    
+                    const template = this.dataset.template;
+                    
+                    // 如果选择了自定义，显示自定义项目部分
+                    if (template === 'custom') {
+                        customProjectSection.style.display = 'block';
+                    } else {
+                        customProjectSection.style.display = 'none';
+                        // 这里可以添加根据模板预设值的逻辑
+                    }
+                    
+                    // 添加隐藏字段存储模板选择
+                    let templateInput = document.getElementById('selected-template');
+                    if (!templateInput) {
+                        templateInput = document.createElement('input');
+                        templateInput.type = 'hidden';
+                        templateInput.id = 'selected-template';
+                        templateInput.name = 'selected_template';
+                        document.getElementById('preference-form').appendChild(templateInput);
+                    }
+                    templateInput.value = template;
+                });
+            });
+            
+            // 生成摘要
+            function updateSummary() {
+                // 项目类型摘要
+                const projectSummary = document.getElementById('project-summary');
+                let selectedTemplate = document.querySelector('.template-card.selected');
+                let templateName = selectedTemplate ? selectedTemplate.querySelector('h4').textContent : '未选择';
+                
+                let projectHtml = `<div class="summary-item"><span>项目模板:</span> <span>${templateName}</span></div>`;
+                
+                if (selectedTemplate && selectedTemplate.dataset.template === 'custom') {
+                    const domain = document.getElementById('project-domain');
+                    const testingStrategy = document.getElementById('testing-strategy');
+                    const frameworkPreference = document.getElementById('framework-preference');
+                    
+                    projectHtml += `
+                        <div class="summary-item"><span>项目领域:</span> <span>${domain.options[domain.selectedIndex].text}</span></div>
+                        <div class="summary-item"><span>测试策略:</span> <span>${testingStrategy.options[testingStrategy.selectedIndex].text}</span></div>
+                        <div class="summary-item"><span>框架偏好:</span> <span>${frameworkPreference.options[frameworkPreference.selectedIndex].text}</span></div>
+                        <div class="summary-item"><span>偏好语言:</span> <span>${document.getElementById('preferred-languages').value || '未指定'}</span></div>
+                    `;
+                }
+                
+                projectSummary.innerHTML = projectHtml;
+                
+                // 代码风格摘要
+                const styleSummary = document.getElementById('style-summary');
+                const styleType = document.getElementById('style-type');
+                const commentLevel = document.getElementById('comment-level');
+                
+                let styleHtml = `
+                    <div class="summary-item"><span>编码风格:</span> <span>${styleType.options[styleType.selectedIndex].text}</span></div>
+                    <div class="summary-item"><span>注释级别:</span> <span>${commentLevel.options[commentLevel.selectedIndex].text}</span></div>
+                    <div class="summary-item"><span>行长度:</span> <span>${document.getElementById('line-length').value}</span></div>
+                    <div class="summary-item"><span>使用缩进:</span> <span>${document.getElementById('use-tabs').checked ? 'Tab' : '空格'}</span></div>
+                `;
+                
+                styleSummary.innerHTML = styleHtml;
+                
+                // 功能需求摘要
+                const featureSummary = document.getElementById('feature-summary');
+                let featureHtml = '<div class="summary-item"><span>已选功能:</span> <span>';
+                
+                const checkboxes = document.querySelectorAll('#step-3 input[type="checkbox"]');
+                let selectedFeatures = [];
+                
+                checkboxes.forEach(checkbox => {
+                    if (checkbox.checked) {
+                        selectedFeatures.push(checkbox.labels[0].textContent);
+                    }
+                });
+                
+                featureHtml += selectedFeatures.length > 0 ? selectedFeatures.join(', ') : '无';
+                featureHtml += '</span></div>';
+                
+                const customFeatures = document.getElementById('custom-features').value;
+                if (customFeatures.trim()) {
+                    featureHtml += `<div class="summary-item"><span>自定义功能:</span> <span>${customFeatures}</span></div>`;
+                }
+                
+                featureSummary.innerHTML = featureHtml;
+            }
+            
+            // 表单提交处理
+            document.getElementById('preference-form').addEventListener('submit', function(e) {
+                e.preventDefault();
+                
+                const formData = new FormData(this);
+                const jsonData = {};
+                
+                formData.forEach((value, key) => {
+                    // 处理复选框
+                    if (key.startsWith('authentication') || key.startsWith('authorization') || 
+                        key.startsWith('data_validation') || key.startsWith('error_handling') || 
+                        key.startsWith('logging') || key.startsWith('caching') || 
+                        key.startsWith('internationalization') || key.startsWith('performance_optimization') || 
+                        key.startsWith('security_features') || key.startsWith('monitoring') || 
+                        key.startsWith('analytics') || key.startsWith('search_functionality') || 
+                        key.startsWith('file_handling') || key.startsWith('email_integration') || 
+                        key.startsWith('payment_processing') || key.startsWith('social_integration') || 
+                        key.startsWith('use_tabs') || key.startsWith('prefer_single_quotes') || 
+                        key.startsWith('trailing_commas') || key.startsWith('bracket_spacing') || 
+                        key.startsWith('arrow_parens') || key.startsWith('semicolons') || 
+                        key.startsWith('always_use_explicit_types')) {
+                        jsonData[key] = value === 'on';
+                    } else if (key === 'line_length' || key === 'tab_width') {
+                        // 处理数字输入
+                        jsonData[key] = parseInt(value);
+                    } else if (key === 'preferred_languages' || key === 'architecture_patterns') {
+                        // 处理逗号分隔的列表
+                        jsonData[key] = value.split(',').map(item => item.trim()).filter(item => item);
+                    } else if (key === 'custom_features') {
+                        // 处理自定义功能，按行分隔
+                        const features = value.split('\n').map(item => item.trim()).filter(item => item);
+                        jsonData[key] = {};
+                        features.forEach(feature => {
+                            jsonData[key][feature] = true;
+                        });
+                    } else {
+                        jsonData[key] = value;
+                    }
+                });
+                
+                // 发送Ajax请求
+                fetch('/api/preferences/create', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        name: jsonData.preference_name,
+                        description: jsonData.preference_description,
+                        template: jsonData.selected_template,
+                        code_style: {
+                            style_type: jsonData.style_type,
+                            comment_level: jsonData.comment_level,
+                            line_length: jsonData.line_length,
+                            use_tabs: jsonData.use_tabs,
+                            tab_width: jsonData.tab_width,
+                            prefer_single_quotes: jsonData.prefer_single_quotes,
+                            trailing_commas: jsonData.trailing_commas,
+                            bracket_spacing: jsonData.bracket_spacing,
+                            arrow_parens: jsonData.arrow_parens,
+                            semicolons: jsonData.semicolons,
+                            always_use_explicit_types: jsonData.always_use_explicit_types
+                        },
+                        project_type: {
+                            domain: jsonData.project_domain,
+                            testing_strategy: jsonData.testing_strategy,
+                            framework_preference: jsonData.framework_preference,
+                            preferred_languages: jsonData.preferred_languages,
+                            architecture_patterns: jsonData.architecture_patterns
+                        },
+                        feature_requirements: {
+                            authentication: jsonData.authentication,
+                            authorization: jsonData.authorization,
+                            data_validation: jsonData.data_validation,
+                            error_handling: jsonData.error_handling,
+                            logging: jsonData.logging,
+                            caching: jsonData.caching,
+                            internationalization: jsonData.internationalization,
+                            performance_optimization: jsonData.performance_optimization,
+                            security_features: jsonData.security_features,
+                            monitoring: jsonData.monitoring,
+                            analytics: jsonData.analytics,
+                            search_functionality: jsonData.search_functionality,
+                            file_handling: jsonData.file_handling,
+                            email_integration: jsonData.email_integration,
+                            payment_processing: jsonData.payment_processing,
+                            social_integration: jsonData.social_integration,
+                            custom_features: jsonData.custom_features
+                        }
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        // 显示成功消息
+                        alert('偏好设置已保存！');
+                        window.location.href = '/preferences';
+                    } else {
+                        // 显示错误消息
+                        alert('保存偏好设置时出错: ' + data.error);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('请求过程中发生错误，请重试');
+                });
+            });
+        });
+    </script>
+</body>
+</html> 
