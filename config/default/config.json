@@ -1,0 +1,394 @@
+{
+    "app": {
+        "name": "CodeAssistant",
+        "version": "0.2.0",
+        "environment": "development",
+        "debug": true,
+        "host": "localhost",
+        "port": 8080
+    },
+    "models": {
+        "inference": {
+            "provider": "ollama",
+            "name": "llama2:7b-chat-q4_K_M",
+            "api_base": "http://localhost:11434",
+            "api_key": "",
+            "max_context_length": 4000,
+            "temperature": 0.3,
+            "max_tokens": 1024,
+            "timeout_seconds": 120,
+            "available_models": [
+                {
+                    "name": "llama2:7b-chat-q4_K_M",
+                    "description": "量化版Llama2聊天模型，平衡速度和质量",
+                    "ram_required": "8GB",
+                    "vram_required": "4GB",
+                    "best_for": ["general_purpose", "chat", "instruction_following"]
+                },
+                {
+                    "name": "codellama:7b-instruct-q4_K_M",
+                    "description": "量化版CodeLlama，适合代码补全和生成",
+                    "ram_required": "8GB",
+                    "vram_required": "4GB",
+                    "best_for": ["code_completion", "code_explanation"]
+                },
+                {
+                    "name": "deepseek-coder:6.7b-instruct-q5_K_M",
+                    "description": "量化版DeepSeek-Coder，专为代码优化",
+                    "ram_required": "10GB",
+                    "vram_required": "5GB",
+                    "best_for": ["code_optimization", "bug_fixing"]
+                },
+                {
+                    "name": "wizardcoder:1b-q5_K_M",
+                    "description": "轻量级代码助手，1B参数，快速响应",
+                    "ram_required": "4GB",
+                    "vram_required": "2GB",
+                    "best_for": ["simple_completion", "quick_help"]
+                },
+                {
+                    "name": "stablelm-zephyr:3b-q5_K_M",
+                    "description": "通用蒸馏模型，适合多种任务",
+                    "ram_required": "6GB",
+                    "vram_required": "3GB",
+                    "best_for": ["general_purpose"]
+                }
+            ]
+        },
+        "embedding": {
+            "provider": "ollama",
+            "name": "bge-m3",
+            "api_base": "http://localhost:11434",
+            "api_key": "",
+            "dimensions": 1024,
+            "available_models": [
+                {
+                    "name": "nomic-embed-text:latest",
+                    "description": "高效文本嵌入模型，小内存占用",
+                    "ram_required": "2GB",
+                    "vram_required": "2GB"
+                },
+                {
+                    "name": "mxbai-embed-large:latest",
+                    "description": "多语言嵌入模型，适合中英文代码库",
+                    "ram_required": "3GB",
+                    "vram_required": "3GB"
+                }
+            ]
+        },
+        "directory": "models",
+        "configs_directory": "config/models",
+        "default": "gpt-3.5-turbo",
+        "max_concurrent": 2,
+        "timeout_seconds": 60
+    },
+    "model_management": {
+        "auto_select": true,
+        "auto_unload": true,
+        "unload_timeout_minutes": 10,
+        "prefer_gpu": true,
+        "max_concurrent_models": 1
+    },
+    "system_monitor": {
+        "enabled": true,
+        "check_interval_seconds": 300,
+        "default_mode": "balanced",
+        "auto_recommend_models": true,
+        "thresholds": {
+            "cpu_high": 80,
+            "memory_high": 80,
+            "vram_high": 80
+        },
+        "modes": {
+            "balanced": {
+                "description": "平衡性能和资源占用",
+                "inference_model_size": "medium"
+            },
+            "performance": {
+                "description": "优先考虑性能，可能占用更多资源",
+                "inference_model_size": "large"
+            }
+        },
+        "performance_mode": {
+            "memory_usage_percent": 90,
+            "vram_usage_percent": 90
+        },
+        "balanced_mode": {
+            "memory_usage_percent": 65,
+            "vram_usage_percent": 65
+        },
+        "minimum_requirements": {
+            "ram_gb": 4,
+            "vram_gb": 0
+        }
+    },
+    "knowledge_base": {
+        "storage_path": "data/knowledge_bases",
+        "document_types": ["pdf", "md", "txt", "docx", "pptx", "xlsx", "html", "csv"],
+        "chunk_size": 500,
+        "chunk_overlap": 50,
+        "supported_extensions": [".pdf", ".txt", ".md", ".docx", ".pptx", ".xlsx", ".py", ".js", ".html"]
+    },
+    "code_completion": {
+        "cache_enabled": true,
+        "cache_size": 100,
+        "languages": ["python", "javascript", "typescript", "java", "cpp", "csharp", "go", "rust", "php", "ruby"]
+    },
+    "repository_integration": {
+        "enabled": true,
+        "platforms": {
+            "github": {
+                "enabled": true,
+                "api_url": "https://api.github.com"
+            },
+            "gitlab": {
+                "enabled": true,
+                "api_url": "https://gitlab.com/api/v4"
+            },
+            "gitee": {
+                "enabled": true,
+                "api_url": "https://gitee.com/api/v5"
+            }
+        },
+        "local_repo_path": "data/repositories",
+        "cache_ttl_minutes": 30,
+        "default_branch": "main",
+        "settings_path": "data/repositories/settings",
+        "audit_log_path": "data/repositories/audit",
+        "permissions": {
+            "default_role": "reader",
+            "custom_roles_enabled": true
+        }
+    },
+    "authorization_settings": {
+        "default_mode": "strict",
+        "permission_storage_path": "data/permissions",
+        "sensitive_operations": [
+            "repo_clone",
+            "repo_pull",
+            "repo_push",
+            "repo_delete",
+            "system_command",
+            "file_delete"
+        ],
+        "modes": {
+            "strict": {
+                "description": "每次操作都需要确认",
+                "require_confirmation": true
+            },
+            "trust": {
+                "description": "多次确认后获得信任",
+                "confirm_count_required": 3,
+                "trusted_session_ttl_minutes": 60
+            }
+        }
+    },
+    "ui": {
+        "theme": "light",
+        "font_size": "medium",
+        "enable_animations": true,
+        "show_system_stats": true
+    },
+    "logging": {
+        "level": "info",
+        "file": "logs/mcp.log",
+        "console_enabled": true,
+        "max_size_mb": 10,
+        "backup_count": 5
+    },
+    "storage": {
+        "type": "sqlite",
+        "path": "data/user_data/codeassistant.db"
+    },
+    "performance": {
+        "hardware_profile": "medium",
+        "max_memory_usage_mb": 8192,
+        "disk_cache_enabled": true,
+        "disk_cache_max_gb": 10
+    },
+    "general": {
+        "app_name": "CodeAssistant",
+        "version": "0.1.0",
+        "language": "zh-CN",
+        "debug_mode": false,
+        "log_level": "INFO",
+        "log_file": "data/logs/codeassistant.log"
+    },
+    "server": {
+        "host": "127.0.0.1",
+        "port": 8000,
+        "debug": false,
+        "workers": 4
+    },
+    "user_management": {
+        "enable_registration": true,
+        "default_admin_username": "admin",
+        "default_admin_password": "password",
+        "default_admin_email": "admin@example.com",
+        "session_ttl_minutes": 1440,
+        "login_attempts_limit": 5,
+        "login_lockout_minutes": 30,
+        "password_min_length": 8,
+        "password_require_special": true,
+        "api_key_default_expiry_days": 90
+    },
+    "storage": {
+        "type": "sqlite",
+        "path": "data/user_data/codeassistant.db",
+        "backup_enabled": true,
+        "backup_interval_hours": 24,
+        "backup_path": "data/backups",
+        "max_backups": 7
+    },
+    "ai_integration": {
+        "provider": "openai",
+        "api_key": "",
+        "model": "gpt-4",
+        "temperature": 0.2,
+        "max_tokens": 2000,
+        "timeout": 120,
+        "use_streaming": true,
+        "provider_base_url": "https://api.openai.com/v1"
+    },
+    "code_analysis": {
+        "enabled": true,
+        "analysis_on_save": true,
+        "max_file_size_kb": 1000,
+        "ignored_extensions": [".min.js", ".map", ".bundle.js"],
+        "linters": {
+            "pylint": {"enabled": true},
+            "eslint": {"enabled": true},
+            "prettier": {"enabled": true}
+        }
+    },
+    "knowledge_base": {
+        "enabled": true,
+        "embeddings_path": "data/embeddings",
+        "sources_path": "data/knowledge_sources",
+        "vector_db_path": "data/vector_db",
+        "chunk_size": 1000,
+        "chunk_overlap": 200,
+        "auto_refresh": true,
+        "refresh_interval_hours": 24
+    },
+    "repository_integration": {
+        "enabled": true,
+        "default_clone_path": "data/repositories",
+        "max_repo_size_mb": 500,
+        "auto_update_interval_hours": 12,
+        "permissions": {
+            "default_role": "reader",
+            "require_authentication": true,
+            "enforce_branch_protection": true
+        }
+    },
+    "notifications": {
+        "enabled": true,
+        "email": {
+            "enabled": false,
+            "smtp_server": "",
+            "smtp_port": 587,
+            "smtp_username": "",
+            "smtp_password": "",
+            "from_address": "noreply@codeassistant.app",
+            "use_tls": true
+        },
+        "desktop": {
+            "enabled": true
+        }
+    },
+    "scheduled_tasks": {
+        "db_maintenance": {
+            "enabled": true,
+            "interval_hours": 24,
+            "vacuum": true,
+            "optimize": true
+        },
+        "log_rotation": {
+            "enabled": true,
+            "max_log_size_mb": 10,
+            "max_logs": 10
+        }
+    },
+    "ui": {
+        "theme": "system",
+        "code_font": "Consolas, 'Courier New', monospace",
+        "font_size": "medium",
+        "editor": {
+            "tab_size": 4,
+            "use_tabs": false,
+            "word_wrap": false,
+            "show_line_numbers": true,
+            "highlight_current_line": true
+        }
+    },
+    "security": {
+        "allowed_ips": [],
+        "rate_limit_enabled": true,
+        "rate_limit_requests": 100,
+        "rate_limit_interval_seconds": 60,
+        "cors_allowed_origins": ["http://localhost:5000"],
+        "jwt": {
+            "secret_key": "change-this-in-production",
+            "access_token_expire_minutes": 30,
+            "refresh_token_expire_days": 7
+        },
+        "enable_2fa": false,
+        "enable_captcha": false
+    },
+    "system_health": {
+        "monitor_enabled": true,
+        "check_interval_seconds": 300,
+        "cpu_warning_percent": 80,
+        "memory_warning_percent": 80,
+        "disk_warning_percent": 90,
+        "alert_on_warnings": true
+    },
+    "network": {
+        "cache_dir": "cache/network",
+        "cache_ttl": 3600,
+        "max_cache_size_mb": 100,
+        "timeout": 30,
+        "max_retries": 3,
+        "retry_delay": 1,
+        "whitelist": [
+            "api.github.com",
+            "raw.githubusercontent.com",
+            "registry.npmjs.org",
+            "pypi.org",
+            "files.pythonhosted.org"
+        ],
+        "content_filters": []
+    },
+    "filesystem": {
+        "max_file_size_mb": 10,
+        "excluded_dirs": [
+            ".git",
+            "node_modules",
+            "venv",
+            "__pycache__",
+            ".vscode",
+            ".idea"
+        ],
+        "excluded_extensions": [
+            ".pyc",
+            ".pyo",
+            ".pyd",
+            ".so",
+            ".dll",
+            ".exe"
+        ],
+        "scan_interval_seconds": 300
+    },
+    "context": {
+        "max_size_kb": 1024,
+        "compression_threshold_kb": 512,
+        "persistence_enabled": true,
+        "persistence_dir": "cache/context",
+        "ttl_seconds": 86400
+    },
+    "plugins": {
+        "enabled": true,
+        "directory": "plugins"
+    }
+} 
