@@ -367,7 +367,7 @@ class KnowledgeBaseEntry(Base):
     id = Column(Integer, primary_key=True)
     text = Column(Text, nullable=False)
     source = Column(String(256))
-    metadata = Column(Text)  # 存储为JSON字符串
+    meta_info = Column(Text)  # 存储为JSON字符串
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
 
