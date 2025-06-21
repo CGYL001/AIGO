@@ -21,7 +21,7 @@ app = Flask(
 
 # 初始化服务和模块
 model_service = ModelServiceFactory.create_service()
-knowledge_base = KnowledgeBase(embedding_model=config.get("models.embedding.name", "nomic-embed-text"))
+knowledge_base = KnowledgeBase(embedding_model=config.get("models.embedding.name", "bge-m3"))
 code_completion = CodeCompletion(model_name=config.get("models.inference.name", "codellama:7b-instruct-q4_K_M"))
 error_checker = ErrorChecker()
 code_analyzer = CodeAnalyzer()

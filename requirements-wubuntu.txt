@@ -1,0 +1,46 @@
+# AIgo Wubuntu环境依赖
+# 基础依赖
+-r requirements-core.txt
+
+# 跨平台支持
+pathlib>=1.0.1
+psutil>=5.9.0
+distro>=1.8.0
+
+# Windows集成
+pywin32>=306; sys_platform == 'win32'
+wmi>=1.5.1; sys_platform == 'win32'
+
+# Wubuntu特定依赖
+# 这些包在标准pip中可能不可用，可能需要从Wubuntu特定源安装
+# wubuntu-utils
+# wubuntu-integration
+
+# GUI支持（可选）
+PyQt5>=5.15.0; python_version >= '3.6'
+PyGObject>=3.42.0; sys_platform == 'linux'
+
+# 开发工具
+pytest>=7.0.0
+black>=23.0.0
+isort>=5.12.0
+mypy>=1.0.0
+
+# 导入API依赖
+-r requirements-api.txt
+
+# 机器学习依赖 (Wubuntu优化版本)
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+onnxruntime>=1.15.0
+transformers>=4.30.0
+sentence-transformers>=2.2.2
+faiss-cpu>=1.7.4
+bitsandbytes>=0.41.0
+
+# Wubuntu特定依赖
+wubuntu-python-utils>=1.0.0; platform_system=="Linux"  # 仅在Linux系统上安装
+
+# 系统集成
+py-cpuinfo>=9.0.0 

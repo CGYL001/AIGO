@@ -1,0 +1,20 @@
+# AIgo 核心依赖
+# 包含项目基本功能所需的依赖
+
+# 基础库
+typer>=0.9.0            # 命令行接口
+requests>=2.28.0        # HTTP请求
+psutil>=5.9.0           # 系统监控
+pyyaml>=6.0             # YAML配置文件支持
+numpy>=2.0.0            # 数值计算
+sqlalchemy>=2.0.0       # 数据库ORM
+bcrypt>=4.0.0           # 密码哈希
+httpx>=0.24.0           # HTTP客户端(所有平台)
+flask>=3.0.0            # Web框架
+greenlet>=1.0.0         # 协程支持
+
+# Web界面基础依赖
+jinja2>=3.1.0           # 模板引擎
+werkzeug>=3.0.0         # WSGI工具
+itsdangerous>=2.0.0     # 安全签名
+blinker>=1.9.0          # 信号支持 

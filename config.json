@@ -1,0 +1,190 @@
+{
+    "app": {
+        "name": "CodeAssistant",
+        "version": "0.1.0",
+        "environment": "development",
+        "debug": true,
+        "host": "127.0.0.1",
+        "port": 8080
+    },
+    "models": {
+        "inference": {
+            "provider": "ollama",
+            "name": "llama2:7b-chat-q4_K_M",
+            "api_base": "http://localhost:11434",
+            "api_key": "",
+            "max_context_length": 4000,
+            "temperature": 0.3,
+            "max_tokens": 1024,
+            "timeout_seconds": 120,
+            "available_models": [
+                {
+                    "name": "llama2:7b-chat-q4_K_M",
+                    "description": "量化版Llama2聊天模型，平衡速度和质量",
+                    "ram_required": "8GB",
+                    "vram_required": "4GB",
+                    "best_for": [
+                        "general_purpose",
+                        "chat",
+                        "instruction_following"
+                    ]
+                },
+                {
+                    "name": "wizardcoder:1b-q5_K_M",
+                    "description": "轻量级代码助手，1B参数，快速响应",
+                    "ram_required": "4GB",
+                    "vram_required": "2GB",
+                    "best_for": [
+                        "simple_completion",
+                        "quick_help"
+                    ]
+                }
+            ]
+        },
+        "embedding": {
+            "provider": "ollama",
+            "name": "nomic-embed-text",
+            "api_base": "http://localhost:11434",
+            "api_key": "",
+            "dimensions": 768,
+            "available_models": [
+                {
+                    "name": "nomic-embed-text:latest",
+                    "description": "高效文本嵌入模型，小内存占用",
+                    "ram_required": "2GB",
+                    "vram_required": "2GB"
+                }
+            ]
+        },
+        "directory": "models",
+        "configs_directory": "config/models",
+        "default": "llama2:7b-chat-q4_K_M",
+        "max_concurrent": 1,
+        "timeout_seconds": 60
+    },
+    "model_management": {
+        "auto_select": true,
+        "auto_unload": true,
+        "unload_timeout_minutes": 10,
+        "prefer_gpu": true,
+        "max_concurrent_models": 1
+    },
+    "system_monitor": {
+        "enabled": true,
+        "check_interval_seconds": 300,
+        "default_mode": "balanced",
+        "auto_recommend_models": true,
+        "thresholds": {
+            "cpu_high": 80,
+            "memory_high": 80,
+            "vram_high": 80
+        },
+        "balanced_mode": {
+            "memory_usage_percent": 65,
+            "vram_usage_percent": 65
+        },
+        "minimum_requirements": {
+            "ram_gb": 4,
+            "vram_gb": 0
+        }
+    },
+    "knowledge_base": {
+        "enabled": true,
+        "embeddings_path": "data/embeddings",
+        "sources_path": "data/knowledge_sources",
+        "vector_db_path": "data/vector_db",
+        "chunk_size": 1000,
+        "chunk_overlap": 200,
+        "auto_refresh": true,
+        "refresh_interval_hours": 24
+    },
+    "code_completion": {
+        "cache_enabled": true,
+        "cache_size": 100,
+        "languages": [
+            "python",
+            "javascript",
+            "typescript",
+            "java",
+            "cpp",
+            "csharp",
+            "go"
+        ]
+    },
+    "repository_integration": {
+        "enabled": true,
+        "default_clone_path": "data/repositories",
+        "max_repo_size_mb": 500,
+        "auto_update_interval_hours": 12
+    },
+    "ui": {
+        "theme": "system",
+        "code_font": "Consolas, 'Courier New', monospace",
+        "font_size": "medium",
+        "editor": {
+            "tab_size": 4,
+            "use_tabs": false,
+            "word_wrap": false,
+            "show_line_numbers": true,
+            "highlight_current_line": true
+        }
+    },
+    "logging": {
+        "level": "info",
+        "file": "logs/app.log",
+        "console_enabled": true,
+        "max_size_mb": 10,
+        "backup_count": 5
+    },
+    "storage": {
+        "type": "sqlite",
+        "path": "data/user_data/codeassistant.db",
+        "backup_enabled": true,
+        "backup_interval_hours": 24,
+        "backup_path": "data/backups",
+        "max_backups": 7
+    },
+    "general": {
+        "app_name": "CodeAssistant",
+        "version": "0.1.0",
+        "language": "zh-CN",
+        "debug_mode": false,
+        "log_level": "INFO",
+        "log_file": "data/logs/codeassistant.log"
+    },
+    "server": {
+        "host": "127.0.0.1",
+        "port": 8000,
+        "debug": false,
+        "workers": 4
+    },
+    "output": {
+        "save_html": true,
+        "save_image": true,
+        "output_dir": "output/custom",
+        "image_dir": "output/custom/images"
+    },
+    "visualization": {
+        "dashboard": {
+            "width": 1024,
+            "height": 768,
+            "theme": "dark"
+        },
+        "structure": {
+            "width": 1200,
+            "height": 900,
+            "theme": "light"
+        },
+        "realtime": {
+            "width": 1024,
+            "height": 768,
+            "theme": "dark",
+            "animation_speed": 0.1
+        },
+        "art": {
+            "width": 1000,
+            "height": 1000,
+            "theme": "light"
+        }
+    }
+}

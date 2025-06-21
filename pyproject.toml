@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "aigo"
+version = "0.1.0"
+description = "AI assistant platform with modular design and multi-model support"
+readme = "README.md"
+authors = [
+    {name = "AIgo Team", email = "example@example.com"}
+]
+license = {text = "MIT"}
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+requires-python = ">=3.9"
+dependencies = [
+    "typer>=0.9.0",
+    "requests>=2.28.0",
+]
+
+[project.optional-dependencies]
+api = [
+    "fastapi>=0.100.0",
+    "uvicorn>=0.22.0",
+    "pydantic>=2.0.0",
+]
+dev = [
+    "pytest>=7.3.1",
+    "black>=23.3.0",
+    "ruff>=0.0.262",
+    "isort>=5.12.0",
+]
+all = [
+    "fastapi>=0.100.0", 
+    "uvicorn>=0.22.0", 
+    "pydantic>=2.0.0",
+    "pytest>=7.3.1",
+]
+
+[project.scripts]
+aigo = "AIGO.cli.__main__:app"
+
+[tool.setuptools]
+packages = ["AIGO"]
+
+[tool.black]
+line-length = 88
+target-version = ["py39"]
+
+[tool.isort]
+profile = "black"
+line_length = 88
+
+[tool.ruff]
+line-length = 88
+target-version = "py39"
+select = ["E", "F", "I"] 

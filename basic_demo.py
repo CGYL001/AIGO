@@ -1,0 +1,6 @@
+print("Hello, world!")
+print("This is a basic demo of printing functionality.")
+print("1 + 2 =", 1 + 2)
+print("5 * 6 =", 5 * 6)
+print("10 / 2 =", 10 / 2)
+print("Demo completed.") 

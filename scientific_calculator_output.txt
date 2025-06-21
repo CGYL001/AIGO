@@ -1,0 +1,50 @@
+===== SCIENTIFIC CALCULATOR DEMO =====
+
+1. Basic Operations:
+Addition: 5 + 3 = 8
+Subtraction: 10 - 4 = 6
+Multiplication: 6 * 7 = 42
+Division: 20 / 4 = 5.0
+
+2. Scientific Operations:
+Power: 2^3 = 8.0
+Square Root: √16 = 4.0
+Sine: sin(30°) = 0.49999999999999994
+Cosine: cos(60°) = 0.5000000000000001
+Tangent: tan(45°) = 0.9999999999999999
+Log10: log10(100) = 2.0
+Natural Log: ln(e) = 1.0
+Factorial: 5! = 120
+
+3. Memory Operations:
+Store in memory: 42
+Current result: 30
+Recall from memory: 42
+Clear memory: 0
+
+4. Error Handling:
+Attempting to divide by zero:
+Error caught: Cannot divide by zero
+Attempting to calculate square root of negative number:
+Error caught: Cannot calculate square root of a negative number
+Attempting to calculate tangent of 90 degrees:
+Error caught: Tangent is undefined at 90 degrees (and equivalent angles)
+
+5. Calculation History:
+1. 5 + 3 = 8
+2. 10 - 4 = 6
+3. 6 * 7 = 42
+4. 20 / 4 = 5.0
+5. 2^3 = 8.0
+6. √16 = 4.0
+7. sin(30°) = 0.49999999999999994
+8. cos(60°) = 0.5000000000000001
+9. tan(45°) = 0.9999999999999999
+10. log10(100) = 2.0
+11. ln(2.718281828459045) = 1.0
+12. 5! = 120
+13. 42 + 0 = 42
+14. M+ = 42
+15. 10 + 20 = 30
+16. MR = 42
+17. MC (was 42)

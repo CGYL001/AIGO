@@ -1,0 +1,5 @@
+print("START_MARKER")
+print("Testing basic output")
+print("1 + 2 =", 1 + 2)
+print("Test completed")
+print("END_MARKER") 

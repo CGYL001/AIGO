@@ -1,3 +1,6 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
 """
 异步操作工具
 
@@ -8,7 +11,7 @@ import asyncio
 import functools
 import logging
 import time
-from typing import Callable, TypeVar, Any, Optional, Dict, List, Union, Tuple
+from typing import Callable, TypeVar, Any, Optional, Dict, List, Union, Tuple, Coroutine, cast
 
 logger = logging.getLogger(__name__)
 
@@ -185,3 +188,107 @@ async def with_timeout(coro, timeout: float, default=None):
     except asyncio.TimeoutError:
         logger.warning(f"操作超时 ({timeout}秒)")
         return default 
+
+def run_async(coro: Coroutine[Any, Any, T]) -> T:
+    """运行异步协程
+    
+    Args:
+        coro: 要运行的协程
+    
+    Returns:
+        T: 协程的返回值
+    """
+    try:
+        loop = asyncio.get_event_loop()
+    except RuntimeError:
+        # 如果没有事件循环，创建一个新的
+        loop = asyncio.new_event_loop()
+        asyncio.set_event_loop(loop)
+    
+    return loop.run_until_complete(coro)
+
+def async_timeout(timeout: float):
+    """异步超时装饰器
+    
+    Args:
+        timeout: 超时时间（秒）
+    
+    Returns:
+        Callable: 装饰器函数
+    """
+    def decorator(func):
+        @functools.wraps(func)
+        async def wrapper(*args, **kwargs):
+            try:
+                return await asyncio.wait_for(func(*args, **kwargs), timeout)
+            except asyncio.TimeoutError:
+                logger.warning(f"函数 {func.__name__} 执行超时 (>{timeout}秒)")
+                raise TimeoutError(f"函数 {func.__name__} 执行超时")
+        return wrapper
+    return decorator
+
+async def retry_async(func, *args, retries=3, delay=1.0, backoff=2.0, **kwargs):
+    """带重试的异步函数执行器
+    
+    Args:
+        func: 要执行的异步函数
+        *args: 函数参数
+        retries: 最大重试次数
+        delay: 初始延迟时间（秒）
+        backoff: 延迟时间的增长因子
+        **kwargs: 函数关键字参数
+    
+    Returns:
+        Any: 函数的返回值
+    
+    Raises:
+        Exception: 如果所有重试都失败，则抛出最后一个异常
+    """
+    last_exception = None
+    current_delay = delay
+    
+    for attempt in range(retries + 1):
+        try:
+            if attempt > 0:
+                logger.info(f"重试 {attempt}/{retries}，延迟 {current_delay:.2f}秒")
+                await asyncio.sleep(current_delay)
+                current_delay *= backoff
+            
+            return await func(*args, **kwargs)
+        except Exception as e:
+            last_exception = e
+            logger.warning(f"尝试 {attempt + 1}/{retries + 1} 失败: {str(e)}")
+    
+    raise last_exception
+
+def sync_to_async(func: Callable) -> Callable:
+    """将同步函数转换为异步函数
+    
+    Args:
+        func: 同步函数
+    
+    Returns:
+        Callable: 异步包装函数
+    """
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+        return await asyncio.to_thread(func, *args, **kwargs)
+    return wrapper
+
+def timed_async(func: Callable) -> Callable:
+    """异步函数计时装饰器
+    
+    Args:
+        func: 要计时的异步函数
+    
+    Returns:
+        Callable: 装饰后的函数
+    """
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+        start_time = time.time()
+        result = await func(*args, **kwargs)
+        elapsed = time.time() - start_time
+        logger.debug(f"函数 {func.__name__} 执行耗时: {elapsed:.4f}秒")
+        return result
+    return wrapper 

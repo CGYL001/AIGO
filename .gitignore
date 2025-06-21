@@ -4,7 +4,6 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
 build/
 develop-eggs/
 dist/
@@ -20,6 +19,44 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+.pytest_cache/
+
+# Virtual environments
+venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Project specific
+*.log
+logs/
+.aigo/
+set_env.bat
+set_env.sh
+
+# Jupyter Notebook
+.ipynb_checkpoints
 
 # Environments
 .env
@@ -80,7 +117,6 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-MANIFEST
 
 # Large files
 *.bin
@@ -91,4 +127,52 @@ MANIFEST
 *.tar
 *.onnx
 *.pt
-*.h5 
+*.h5
+
+# 个性化模型配置和元数据
+models/registry/models/*
+models/registry/*.custom.json
+models/*.custom.json
+
+# 模型下载和缓存目录
+model_downloads/
+.model_cache/
+models/downloads/
+models/cache/
+
+# 临时检查点和训练数据
+temp_checkpoints/
+temp_training_memory/
+checkpoints/
+
+# 缓存文件
+cache/
+__pycache__/
+*.py[cod]
+*$py.class
+
+# 日志文件
+logs/
+*.log
+*.logs
+training_*.log
+
+# 输出目录
+output/
+outputs/
+
+# 虚拟环境
+venv/
+.venv/
+env/
+.env/
+
+# IDE配置
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 系统文件
+.DS_Store
+Thumbs.db 

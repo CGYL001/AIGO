@@ -25,7 +25,7 @@ from src.utils.dependency_container import get_container
 
 # 导入服务
 from src.services.model_service import ModelService
-from src.services.auth_service import AuthService
+from src.services.auth_service import AuthorizationService as AuthService
 from src.api.app import start_web_app
 
 def parse_args():

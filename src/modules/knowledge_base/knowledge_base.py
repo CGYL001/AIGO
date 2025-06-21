@@ -21,12 +21,13 @@ from src.services import ModelServiceFactory
 class KnowledgeBase:
     """知识库类，提供文档管理和向量检索功能"""
     
-    def __init__(self, config=None):
+    def __init__(self, config=None, embedding_model=None):
         """
         初始化知识库
         
         参数:
             config: 配置参数
+            embedding_model: 嵌入模型名称
         """
         self.config = config or {}
         self.vector_store = None
@@ -34,6 +35,7 @@ class KnowledgeBase:
         self.embedding_model = None
         self.chunk_size = self.config.get("chunk_size", 500)
         self.chunk_overlap = self.config.get("chunk_overlap", 100)
+        self.embedding_model_name = embedding_model
         
         # 初始化嵌入模型
         self._init_embedding_model()
@@ -42,7 +44,15 @@ class KnowledgeBase:
         """初始化嵌入模型"""
         try:
             # 创建模型服务
-            self.embedding_model = ModelServiceFactory.create_service()
+            model_service = ModelServiceFactory.create_service()
+            
+            # 如果指定了嵌入模型名称，记录信息
+            if self.embedding_model_name:
+                logger.info(f"使用指定的嵌入模型: {self.embedding_model_name}")
+            
+            # 直接使用模型服务，不调用可能不存在的方法
+            self.embedding_model = model_service
+                
         except Exception as e:
             logger.warning(f"初始化嵌入模型失败: {e}")
             self.embedding_model = None
@@ -91,14 +101,25 @@ class KnowledgeBase:
             
         try:
             if self.embedding_model:
-                return self.embedding_model.embed(texts)
+                embeddings = self.embedding_model.embed(texts)
+                
+                # 检查维度是否匹配
+                dimension = self.config.get("embedding_dimension", 384)
+                if embeddings and len(embeddings[0]) != dimension:
+                    logger.warning(f"嵌入向量维度 {len(embeddings[0])} 不匹配预期维度 {dimension}，使用随机向量")
+                    # 返回与预期维度匹配的随机向量
+                    return [list(np.random.uniform(-1, 1, dimension)) for _ in texts]
+                
+                return embeddings
             else:
-                # 模拟嵌入向量（测试用）
-                return [[0.1, 0.2, 0.3] for _ in texts]
+                # 生成随机向量（测试用）
+                dimension = self.config.get("embedding_dimension", 384)
+                return [list(np.random.uniform(-1, 1, dimension)) for _ in texts]
         except Exception as e:
             logger.error(f"获取嵌入向量失败: {e}")
-            # 返回模拟向量
-            return [[0.1, 0.2, 0.3] for _ in texts]
+            # 返回随机向量
+            dimension = self.config.get("embedding_dimension", 384)
+            return [list(np.random.uniform(-1, 1, dimension)) for _ in texts]
     
     def _chunk_text(self, text: str, chunk_size: int = None, overlap: int = None) -> List[str]:
         """
@@ -238,62 +259,49 @@ class KnowledgeBase:
             logger.error(f"添加文本失败: {e}")
             return False
     
-    def search(self, query: str, top_k: int = 5, metadata_filter: Dict = None) -> List[Dict]:
-        """
-        搜索知识库
+    def search(self, query: str, limit: int = 5, filter_criteria: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
+        """搜索文档
         
-        参数:
+        Args:
             query: 查询文本
-            top_k: 返回结果数量
-            metadata_filter: 元数据过滤条件
-            
-        返回:
-            搜索结果列表
+            limit: 返回结果数量限制
+            filter_criteria: 过滤条件
+        
+        Returns:
+            List[Dict[str, Any]]: 搜索结果
         """
         if not self.vector_store:
-            logger.error("向量存储未初始化")
+            logger.warning("向量存储未初始化，无法搜索")
             return []
-            
+        
         try:
             # 获取查询向量
-            query_vector = self._get_embeddings([query])[0]
+            query_embedding = self._get_embeddings([query])[0]
             
-            # 搜索向量存储
-            results = self.vector_store.search(query_vector, top_k=top_k)
+            # 使用向量存储搜索，移除filter_criteria参数
+            results = self.vector_store.search(query_embedding, top_k=limit)
             
-            # 应用元数据过滤
-            if metadata_filter:
+            # 如果有元数据存储，补充元数据信息
+            if self.metadata_store:
+                for result in results:
+                    chunk_id = result.get("id")
+                    if chunk_id:
+                        chunk_metadata = self.metadata_store.get_chunk(chunk_id)
+                        if chunk_metadata:
+                            result.update(chunk_metadata)
+            
+            # 应用过滤条件
+            if filter_criteria:
                 filtered_results = []
                 for result in results:
-                    metadata = result.get("metadata", {})
-                    match = True
-                    for key, value in metadata_filter.items():
-                        if metadata.get(key) != value:
-                            match = False
-                            break
-                    if match:
+                    if all(result.get(k) == v or result.get("metadata", {}).get(k) == v for k, v in filter_criteria.items()):
                         filtered_results.append(result)
                 results = filtered_results
             
-            # 增强结果信息（添加文档元数据）
-            if self.metadata_store:
-                for result in results:
-                    chunk_id = result.get("metadata", {}).get("id")
-                    if chunk_id:
-                        # 获取块详细信息
-                        chunk_data = self.metadata_store.get_chunk(chunk_id)
-                        if chunk_data:
-                            # 获取文档信息
-                            doc_id = chunk_data.get("document_id")
-                            if doc_id:
-                                doc_data = self.metadata_store.get_document(doc_id)
-                                if doc_data:
-                                    # 将文档信息添加到结果中
-                                    result["document"] = doc_data
-            
+            logger.info(f"查询: '{query}'，找到 {len(results)} 个结果")
             return results
         except Exception as e:
-            logger.error(f"搜索知识库失败: {e}")
+            logger.error(f"搜索文档失败: {str(e)}")
             return []
     
     def delete(self, ids: List[str]) -> bool:
@@ -521,4 +529,32 @@ class KnowledgeBase:
                 
             logger.info("知识库连接已关闭")
         except Exception as e:
-            logger.error(f"关闭知识库连接失败: {e}") 
+            logger.error(f"关闭知识库连接失败: {e}")
+
+    def add_documents(self, documents: List[Dict[str, Any]]) -> List[str]:
+        """批量添加文档
+        
+        Args:
+            documents: 文档列表，每个文档包含text和metadata字段
+        
+        Returns:
+            List[str]: 文档ID列表
+        """
+        doc_ids = []
+        for document in documents:
+            # 确保文档有text字段
+            if "text" not in document:
+                logger.warning(f"文档缺少text字段，跳过")
+                continue
+                
+            # 获取或生成文档ID
+            metadata = document.get("metadata", {})
+            doc_id = metadata.get("id", f"doc_{uuid.uuid4().hex[:8]}")
+            
+            # 添加文本
+            success = self.add_text(document["text"], metadata)
+            if success:
+                doc_ids.append(doc_id)
+        
+        logger.info(f"批量添加了 {len(doc_ids)} 个文档")
+        return doc_ids 

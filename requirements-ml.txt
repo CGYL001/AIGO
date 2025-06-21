@@ -1,0 +1,20 @@
+# AIgo 机器学习和模型优化依赖
+# 如需使用高级模型功能，请安装以下依赖
+
+-r requirements-core.txt  # 包含核心依赖
+
+# 通用机器学习依赖
+torch>=2.0.0; platform_system != "Darwin" or platform_machine != "arm64"  # PyTorch
+torch>=2.0.0,<2.1; platform_system == "Darwin" and platform_machine == "arm64"  # M1/M2 Mac专用PyTorch版本
+optimum>=1.8.0          # 模型优化
+accelerate>=0.20.0      # 加速推理
+
+# 知识库
+faiss-cpu>=1.7.0; platform_system != "Windows"  # 向量检索(非Windows)
+
+# 翻译和处理
+argostranslate>=1.7.0   # 离线翻译
+fasttext>=0.9.2; platform_system != "Windows"  # 文本分类(非Windows)
+
+# Windows平台可选替代方案(手动安装)
+# 下载地址: https://pytorch.org/get-started/locally/ 

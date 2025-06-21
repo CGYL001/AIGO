@@ -1,0 +1,21 @@
+# AIgo 开发环境依赖
+# 用于开发、测试和代码质量相关的依赖
+
+-r requirements-core.txt  # 包含核心依赖
+
+# 测试工具
+pytest>=7.3.1           # 测试框架
+pytest-cov>=4.1.0       # 测试覆盖率
+
+# 代码质量工具
+black>=23.3.0           # 代码格式化
+ruff>=0.0.262           # 代码检查
+isort>=5.12.0           # Import排序
+mypy>=1.3.0             # 类型检查
+
+# 文档工具
+sphinx>=7.0.0           # 文档生成
+sphinx-rtd-theme>=1.2.0 # Read the Docs主题
+
+# 开发工具
+pre-commit>=3.3.3       # Git hooks管理 

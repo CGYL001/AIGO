@@ -1,0 +1,20 @@
+===== SIMPLE CALCULATOR DEMO =====
+Starting execution...
+
+Addition Test:
+1 + 2 = 3
+
+Subtraction Test:
+5 - 3 = 2
+
+Multiplication Test:
+4 * 6 = 24
+
+Division Test:
+10 / 2 = 5.0
+
+Error Handling Test:
+Attempting to execute: 10 / 0
+Error caught: Cannot divide by zero
+
+Demo execution completed!

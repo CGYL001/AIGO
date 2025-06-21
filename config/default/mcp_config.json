@@ -1,7 +1,7 @@
 {
     "mcp_server": {
         "enabled": true,
-        "api_host": "localhost",
+        "api_host": "0.0.0.0",
         "api_port": 8765,
         "auth_enabled": true,
         "auth_token": "",

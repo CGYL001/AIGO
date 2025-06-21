@@ -1,0 +1,15 @@
+# AIgo 全部依赖
+# 安装项目所有功能(包括开发工具)所需的依赖
+
+-r requirements-core.txt   # 核心依赖
+-r requirements-api.txt    # API服务依赖
+-r requirements-ml.txt     # 机器学习依赖
+-r requirements-dev.txt    # 开发环境依赖
+
+# 以下是特定平台可能需要手动安装的依赖
+# Windows平台:
+#   - faiss-cpu: 从https://github.com/kyamagu/faiss-wheels/releases下载
+#   - bitsandbytes: 从https://github.com/jllllll/bitsandbytes-windows-webui/releases下载
+
+# Apple Silicon(M1/M2/M3) Mac:
+#   - 确保使用torch 2.0.0与MacOS优化版本 
